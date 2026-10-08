@@ -6,7 +6,12 @@ import { buildEmergencyMessage } from '../location/locationService';
 // ─── Direct Background SMS Native Module (Android Standalone / EAS Build) ───
 let directSmsSender: { sendSms: (phone: string, text: string) => Promise<void> } | null = null;
 try {
-  directSmsSender = require('expo-android-sms-sender');
+  const mod = require('expo-android-sms-sender');
+  if (mod && typeof mod.sendSms === 'function') {
+    directSmsSender = mod;
+  } else if (mod && mod.default && typeof mod.default.sendSms === 'function') {
+    directSmsSender = mod.default;
+  }
 } catch {
   // Graceful fallback when running in Expo Go or iOS
   directSmsSender = null;
