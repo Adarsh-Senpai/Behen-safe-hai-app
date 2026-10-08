@@ -66,11 +66,11 @@ export function buildEmergencyMessage(payload: LocationPayload): string {
   const battStr =
     payload.batteryLevel !== undefined ? ` | Battery: ${payload.batteryLevel}%` : '';
   return (
-    `🆘 EMERGENCY SOS! I need help immediately!\n\n` +
-    `📍 My current location:\n${mapsUrl}\n\n` +
-    `Accuracy: ${accuracyStr}${battStr}\n\n` +
-    `Please contact emergency services and come to my location.\n` +
-    `Sent via SafeHer Safety App`
+    `EMERGENCY SOS: I need help immediately!\n\n` +
+    `Live location:\n${mapsUrl}\n\n` +
+    `GPS Accuracy: ${accuracyStr}${battStr}\n\n` +
+    `Please contact emergency services and reach this location immediately.\n` +
+    `Sent via BehenSafeHai? Safety App`
   );
 }
 
@@ -115,9 +115,9 @@ export async function startBackgroundTracking(): Promise<void> {
       distanceInterval: 10,
       showsBackgroundLocationIndicator: true,
       foregroundService: {
-        notificationTitle: '🔴 Emergency Tracking Active',
-        notificationBody: 'SafeHer is sharing your location. Tap to open.',
-        notificationColor: '#e91e8c',
+        notificationTitle: 'Live Emergency Tracking Active',
+        notificationBody: 'BehenSafeHai? is broadcasting your location. Tap to open.',
+        notificationColor: '#ff1744',
       },
       pausesUpdatesAutomatically: false,
     });

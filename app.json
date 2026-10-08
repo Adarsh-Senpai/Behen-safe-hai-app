@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "SafeHer",
+    "name": "BehenSafeHai?",
     "slug": "safeher",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -11,20 +11,20 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.safeher.app",
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "SafeHer needs your location to send emergency alerts to your trusted contacts.",
-        "NSLocationAlwaysAndWhenInUseUsageDescription": "SafeHer needs background location access to continuously track your location during emergencies.",
-        "NSLocationAlwaysUsageDescription": "SafeHer needs background location access to continuously track your location during emergencies.",
+        "NSLocationWhenInUseUsageDescription": "BehenSafeHai? needs your location to send emergency alerts to your trusted contacts.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "BehenSafeHai? needs background location access to continuously track your location during emergencies.",
+        "NSLocationAlwaysUsageDescription": "BehenSafeHai? needs background location access to continuously track your location during emergencies.",
         "UIBackgroundModes": [
           "location",
           "fetch"
         ],
-        "NSContactsUsageDescription": "SafeHer needs access to your contacts so you can select your trusted emergency contacts directly from your contact book."
+        "NSContactsUsageDescription": "BehenSafeHai? needs access to your contacts so you can select your trusted emergency contacts directly from your contact book."
       }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundColor": "#1a0a2e"
+        "backgroundColor": "#0b0a10"
       },
       "package": "com.safeher.app",
       "permissions": [
@@ -48,9 +48,9 @@
       [
         "expo-location",
         {
-          "locationAlwaysAndWhenInUsePermission": "SafeHer needs location access to send your GPS coordinates to emergency contacts.",
-          "locationAlwaysPermission": "SafeHer needs background location access during emergencies.",
-          "locationWhenInUsePermission": "SafeHer needs location access to send emergency alerts.",
+          "locationAlwaysAndWhenInUsePermission": "BehenSafeHai? needs location access to send your GPS coordinates to emergency contacts.",
+          "locationAlwaysPermission": "BehenSafeHai? needs background location access during emergencies.",
+          "locationWhenInUsePermission": "BehenSafeHai? needs location access to send emergency alerts.",
           "isAndroidBackgroundLocationEnabled": true,
           "isAndroidForegroundServiceEnabled": true
         }

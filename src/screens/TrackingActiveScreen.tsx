@@ -9,7 +9,6 @@ import {
   ScrollView,
   Alert,
   Linking,
-  Platform,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import * as Haptics from 'expo-haptics';
@@ -18,7 +17,6 @@ import { useContacts } from '../hooks/useContacts';
 import {
   getCurrentLocation,
   stopBackgroundTracking,
-  isBackgroundTrackingActive,
 } from '../services/location/locationService';
 import { dispatchSOS } from '../services/sms/smsService';
 
@@ -122,7 +120,7 @@ export default function TrackingActiveScreen({ navigation }: Props) {
 
       await dispatchSOS(contacts, loc);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-      Alert.alert('Alert Dispatched', 'Updated location was sent to your 3 contacts.');
+      Alert.alert('Alert Dispatched', 'Updated location coordinates sent to your 3 contacts.');
     } catch (err: any) {
       Alert.alert('Dispatch Error', err?.message || 'Failed to send SMS.');
     } finally {
@@ -133,7 +131,7 @@ export default function TrackingActiveScreen({ navigation }: Props) {
   const handleCallEmergency = (number: string = '112') => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
     Linking.openURL(`tel:${number}`).catch(() => {
-      Alert.alert('Error', 'Unable to initiate call automatically.');
+      Alert.alert('Error', 'Unable to initiate phone call automatically.');
     });
   };
 
@@ -149,7 +147,7 @@ export default function TrackingActiveScreen({ navigation }: Props) {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#1a0621" />
+      <StatusBar barStyle="light-content" backgroundColor="#09080e" />
 
       <ScrollView
         contentContainerStyle={styles.scrollContent}
@@ -157,15 +155,16 @@ export default function TrackingActiveScreen({ navigation }: Props) {
       >
         <View style={styles.header}>
           <View style={styles.alertBadge}>
-            <Text style={styles.alertBadgeText}>🔴 LIVE TRACKING ACTIVE</Text>
+            <View style={styles.livePulseDot} />
+            <Text style={styles.alertBadgeText}>LIVE GPS TRACKING</Text>
           </View>
-          <Text style={styles.title}>Emergency Mode</Text>
+          <Text style={styles.title}>Emergency Beacon Active</Text>
           <Text style={styles.subtitle}>
-            Your location is continuously monitored and saved in background.
+            Your coordinates are continuously monitored and logged in background
           </Text>
         </View>
 
-        {/* Radar Tracker Visual */}
+        {/* Minimal Geometric Radar Tracker */}
         <View style={styles.radarContainer}>
           <Animated.View
             style={[
@@ -184,14 +183,16 @@ export default function TrackingActiveScreen({ navigation }: Props) {
               },
             ]}
           >
-            <Text style={styles.radarCenterIcon}>📡</Text>
+            <View style={styles.radarTargetRing}>
+              <View style={styles.radarCoreDot} />
+            </View>
           </Animated.View>
         </View>
 
         {/* Location Info Box */}
         <View style={styles.infoCard}>
           <View style={styles.infoHeader}>
-            <Text style={styles.infoTitle}>Current GPS Coordinates</Text>
+            <Text style={styles.infoTitle}>LIVE GPS COORDINATES</Text>
             <Text style={styles.infoTime}>Updated: {lastUpdated}</Text>
           </View>
 
@@ -208,7 +209,7 @@ export default function TrackingActiveScreen({ navigation }: Props) {
               <View style={styles.coordCol}>
                 <Text style={styles.coordLabel}>ACCURACY</Text>
                 <Text style={styles.coordValue}>
-                  ±{currentLoc.accuracy ? Math.round(currentLoc.accuracy) : 0}m
+                  &plusmn;{currentLoc.accuracy ? Math.round(currentLoc.accuracy) : 0}m
                 </Text>
               </View>
               {currentLoc.batteryLevel !== undefined && (
@@ -219,7 +220,7 @@ export default function TrackingActiveScreen({ navigation }: Props) {
               )}
             </View>
           ) : (
-            <Text style={styles.fetchingText}>Acquiring GPS fix...</Text>
+            <Text style={styles.fetchingText}>Acquiring high-precision GPS lock...</Text>
           )}
 
           {currentLoc && (
@@ -229,8 +230,9 @@ export default function TrackingActiveScreen({ navigation }: Props) {
                 const url = `https://maps.google.com/?q=${currentLoc.latitude},${currentLoc.longitude}`;
                 Linking.openURL(url);
               }}
+              activeOpacity={0.8}
             >
-              <Text style={styles.mapLinkText}>🌐 Open in Maps / Verify Pin →</Text>
+              <Text style={styles.mapLinkText}>View Live Pin in Google Maps &rarr;</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -241,9 +243,10 @@ export default function TrackingActiveScreen({ navigation }: Props) {
             style={styles.actionBtnUpdate}
             onPress={handleSendUpdate}
             disabled={sendingUpdate}
+            activeOpacity={0.85}
           >
             <Text style={styles.actionBtnText}>
-              {sendingUpdate ? 'Sending...' : '📲 Send Updated SMS to 3 Contacts'}
+              {sendingUpdate ? 'Broadcasting...' : 'Broadcast Updated Location SMS'}
             </Text>
           </TouchableOpacity>
 
@@ -251,15 +254,17 @@ export default function TrackingActiveScreen({ navigation }: Props) {
             <TouchableOpacity
               style={styles.callBtn}
               onPress={() => handleCallEmergency('112')}
+              activeOpacity={0.8}
             >
-              <Text style={styles.callBtnText}>📞 Call 112 (National SOS)</Text>
+              <Text style={styles.callBtnText}>Call 112 (National SOS)</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               style={[styles.callBtn, styles.callBtnSecondary]}
               onPress={() => handleCallEmergency('100')}
+              activeOpacity={0.8}
             >
-              <Text style={styles.callBtnText}>🚓 Call Police (100)</Text>
+              <Text style={styles.callBtnText}>Call Police (100)</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -270,10 +275,9 @@ export default function TrackingActiveScreen({ navigation }: Props) {
           onPress={handleStopTracking}
           activeOpacity={0.85}
         >
-          <Text style={styles.stopButtonIcon}>🛡️</Text>
-          <Text style={styles.stopButtonText}>I am Safe — Stop Tracking</Text>
+          <Text style={styles.stopButtonText}>I am Safe &bull; Stop Emergency Tracking</Text>
           <Text style={styles.stopButtonSub}>
-            Disables background GPS updates & returns to Dashboard
+            Halts background GPS updates and returns to Dashboard
           </Text>
         </TouchableOpacity>
       </ScrollView>
@@ -281,50 +285,60 @@ export default function TrackingActiveScreen({ navigation }: Props) {
   );
 }
 
-const PINK = '#e91e8c';
-const DARK = '#0d0621';
-const CARD = 'rgba(255,255,255,0.06)';
-const BORDER = 'rgba(255,255,255,0.12)';
+const ACCENT = '#ff2d55';
+const ACCENT_RED = '#ff1744';
+const DARK_BG = '#09080e';
+const SURFACE = '#14121f';
+const BORDER = 'rgba(255, 255, 255, 0.08)';
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: DARK,
+    backgroundColor: DARK_BG,
   },
   scrollContent: {
     paddingHorizontal: 20,
-    paddingTop: 60,
-    paddingBottom: 40,
-    alignItems: 'center',
+    paddingTop: 55,
+    paddingBottom: 45,
   },
   header: {
     alignItems: 'center',
     marginBottom: 26,
   },
   alertBadge: {
-    backgroundColor: 'rgba(255,59,48,0.2)',
-    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 45, 85, 0.12)',
+    paddingHorizontal: 14,
     paddingVertical: 6,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: 'rgba(255,59,48,0.4)',
-    marginBottom: 12,
+    borderColor: 'rgba(255, 45, 85, 0.35)',
+    marginBottom: 14,
+    gap: 8,
+  },
+  livePulseDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: ACCENT,
   },
   alertBadgeText: {
-    color: '#ff4d4d',
+    color: ACCENT,
+    fontSize: 10,
     fontWeight: '800',
-    fontSize: 12,
     letterSpacing: 1.5,
   },
   title: {
     color: '#ffffff',
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: '800',
+    letterSpacing: -0.4,
     marginBottom: 6,
   },
   subtitle: {
-    color: 'rgba(255,255,255,0.5)',
-    fontSize: 13,
+    color: '#8e8a9f',
+    fontSize: 12,
     textAlign: 'center',
     lineHeight: 18,
     paddingHorizontal: 20,
@@ -332,9 +346,10 @@ const styles = StyleSheet.create({
   radarContainer: {
     width: 170,
     height: 170,
+    alignSelf: 'center',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 30,
+    marginVertical: 18,
   },
   radarWave: {
     position: 'absolute',
@@ -342,28 +357,45 @@ const styles = StyleSheet.create({
     height: 130,
     borderRadius: 65,
     borderWidth: 2,
-    borderColor: '#ff2d55',
+    borderColor: ACCENT,
+    backgroundColor: 'rgba(255, 45, 85, 0.06)',
   },
   radarCenter: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: 'rgba(255,45,85,0.2)',
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    backgroundColor: SURFACE,
+    justifyContent: 'center',
+    alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#ff2d55',
+    borderColor: 'rgba(255, 45, 85, 0.4)',
+    shadowColor: ACCENT,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.6,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  radarTargetRing: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1.5,
+    borderColor: ACCENT,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  radarCenterIcon: {
-    fontSize: 34,
+  radarCoreDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: ACCENT,
   },
   infoCard: {
-    width: '100%',
-    backgroundColor: CARD,
-    borderRadius: 20,
+    backgroundColor: SURFACE,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: BORDER,
-    padding: 18,
+    padding: 16,
     marginBottom: 20,
   },
   infoHeader: {
@@ -371,75 +403,83 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.06)',
-    paddingBottom: 10,
   },
   infoTitle: {
-    color: '#ffffff',
-    fontSize: 14,
-    fontWeight: '700',
+    color: '#8e8a9f',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 1.2,
   },
   infoTime: {
-    color: 'rgba(255,255,255,0.4)',
+    color: 'rgba(255, 255, 255, 0.5)',
     fontSize: 11,
   },
   coordsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 12,
-    marginBottom: 14,
+    marginBottom: 12,
   },
   coordCol: {
     flex: 1,
-    minWidth: '45%',
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    minWidth: '40%',
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderRadius: 10,
     padding: 10,
-    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.05)',
   },
   coordLabel: {
-    color: 'rgba(255,255,255,0.4)',
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 1,
+    color: '#8e8a9f',
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.8,
     marginBottom: 4,
   },
   coordValue: {
     color: '#ffffff',
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '700',
+    letterSpacing: 0.2,
   },
   fetchingText: {
-    color: 'rgba(255,255,255,0.6)',
+    color: '#8e8a9f',
+    fontSize: 13,
     textAlign: 'center',
-    marginVertical: 14,
+    paddingVertical: 14,
   },
   mapLink: {
+    marginTop: 8,
+    paddingVertical: 10,
+    backgroundColor: 'rgba(255, 45, 85, 0.08)',
+    borderRadius: 10,
     alignItems: 'center',
-    paddingTop: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 45, 85, 0.25)',
   },
   mapLinkText: {
-    color: '#60a5fa',
-    fontSize: 13,
-    fontWeight: '600',
+    color: ACCENT,
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.3,
   },
   actionSection: {
-    width: '100%',
+    gap: 12,
     marginBottom: 22,
-    gap: 10,
   },
   actionBtnUpdate: {
-    backgroundColor: 'rgba(233,30,140,0.18)',
-    borderWidth: 1,
-    borderColor: PINK,
+    backgroundColor: 'rgba(255, 45, 85, 0.15)',
     borderRadius: 14,
-    paddingVertical: 14,
+    paddingVertical: 15,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 45, 85, 0.4)',
   },
   actionBtnText: {
     color: '#ffffff',
-    fontSize: 14,
-    fontWeight: '700',
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: 0.4,
   },
   callRow: {
     flexDirection: 'row',
@@ -447,16 +487,15 @@ const styles = StyleSheet.create({
   },
   callBtn: {
     flex: 1,
-    backgroundColor: 'rgba(239,68,68,0.2)',
-    borderWidth: 1,
-    borderColor: 'rgba(239,68,68,0.5)',
-    borderRadius: 14,
-    paddingVertical: 12,
+    backgroundColor: SURFACE,
+    borderRadius: 12,
+    paddingVertical: 13,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: BORDER,
   },
   callBtnSecondary: {
-    backgroundColor: 'rgba(59,130,246,0.2)',
-    borderColor: 'rgba(59,130,246,0.5)',
+    borderColor: 'rgba(255, 255, 255, 0.12)',
   },
   callBtnText: {
     color: '#ffffff',
@@ -464,30 +503,24 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   stopButton: {
-    width: '100%',
-    backgroundColor: '#10b981',
-    borderRadius: 18,
-    paddingVertical: 18,
+    backgroundColor: 'rgba(16, 185, 129, 0.12)',
+    borderRadius: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
     alignItems: 'center',
-    shadowColor: '#10b981',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 10,
-    elevation: 8,
-  },
-  stopButtonIcon: {
-    fontSize: 26,
-    marginBottom: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.3)',
   },
   stopButtonText: {
-    color: '#ffffff',
-    fontSize: 17,
+    color: '#10b981',
+    fontSize: 14,
     fontWeight: '800',
-    letterSpacing: 0.5,
+    letterSpacing: 0.4,
   },
   stopButtonSub: {
-    color: 'rgba(255,255,255,0.8)',
+    color: 'rgba(255, 255, 255, 0.5)',
     fontSize: 11,
-    marginTop: 2,
+    marginTop: 4,
+    textAlign: 'center',
   },
 });

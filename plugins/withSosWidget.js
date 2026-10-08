@@ -27,7 +27,7 @@ function withSosWidget(config) {
         $: {
           'android:name': '.SosWidgetProvider',
           'android:exported': 'true',
-          'android:label': 'SafeHer SOS',
+          'android:label': 'BehenSafeHai? SOS',
         },
         'intent-filter': [
           {
@@ -84,8 +84,8 @@ function withSosWidget(config) {
       // Write widget info XML
       const widgetInfoXml = `<?xml version="1.0" encoding="utf-8"?>
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
-    android:minWidth="100dp"
-    android:minHeight="100dp"
+    android:minWidth="110dp"
+    android:minHeight="110dp"
     android:updatePeriodMillis="0"
     android:initialLayout="@layout/sos_widget"
     android:resizeMode="horizontal|vertical"
@@ -94,7 +94,7 @@ function withSosWidget(config) {
 `;
       fs.writeFileSync(path.join(xmlDir, 'sos_widget_info.xml'), widgetInfoXml);
 
-      // Write widget layout XML (High contrast red round emergency button)
+      // Write widget layout XML (Trendy obsidian dark card with electric crimson SOS trigger, NO emojis)
       const widgetLayoutXml = `<?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/widget_root"
@@ -102,24 +102,45 @@ function withSosWidget(config) {
     android:layout_height="match_parent"
     android:gravity="center"
     android:orientation="vertical"
-    android:background="#e91e8c"
-    android:padding="12dp">
+    android:background="#0b0a10"
+    android:padding="10dp">
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="🆘"
-        android:textSize="36sp" />
-
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="EMERGENCY SOS"
-        android:textColor="#ffffff"
-        android:textSize="12sp"
-        android:textStyle="bold"
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
         android:gravity="center"
-        android:layout_marginTop="4dp" />
+        android:orientation="vertical"
+        android:background="#ff1744"
+        android:padding="8dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="SOS"
+            android:textColor="#ffffff"
+            android:textSize="30sp"
+            android:textStyle="bold"
+            android:gravity="center" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="BEHEN SAFE HAI?"
+            android:textColor="#ffffff"
+            android:textSize="10sp"
+            android:textStyle="bold"
+            android:gravity="center"
+            android:layout_marginTop="2dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="ONE-TAP DISPATCH"
+            android:textColor="#ffcdd2"
+            android:textSize="8sp"
+            android:gravity="center"
+            android:layout_marginTop="1dp" />
+    </LinearLayout>
 </LinearLayout>
 `;
       fs.writeFileSync(path.join(layoutDir, 'sos_widget.xml'), widgetLayoutXml);

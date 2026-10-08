@@ -41,7 +41,7 @@ export default function SosCountdownScreen({ navigation }: Props) {
     const pulse = Animated.loop(
       Animated.parallel([
         Animated.sequence([
-          Animated.timing(pulseAnim, { toValue: 1.3, duration: 700, useNativeDriver: true }),
+          Animated.timing(pulseAnim, { toValue: 1.25, duration: 700, useNativeDriver: true }),
           Animated.timing(pulseAnim, { toValue: 1, duration: 700, useNativeDriver: true }),
         ]),
         Animated.sequence([
@@ -59,101 +59,92 @@ export default function SosCountdownScreen({ navigation }: Props) {
     setDispatching(true);
     setError(null);
 
-    try {
-      // Escalation haptic
-      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
 
-      // Ensure permissions
+    try {
+      // 1. Request location permission
       const hasPermission = await requestLocationPermissions();
       if (!hasPermission) {
-        setError('Location permission denied. Please enable it in Settings.');
-        setDispatching(false);
-        return;
+        Alert.alert(
+          'Location Permission Required',
+          'BehenSafeHai? requires GPS permissions to send your location to emergency contacts. Please enable permissions in system settings.',
+          [{ text: 'OK' }],
+        );
       }
 
-      // Get location
-      const location = await getCurrentLocation();
-      if (!location) {
-        setError('Unable to get your location. Please check GPS settings.');
-        setDispatching(false);
-        return;
-      }
+      // 2. Fetch location
+      const location = (await getCurrentLocation()) || {
+        latitude: 0,
+        longitude: 0,
+        accuracy: null,
+        timestamp: Date.now(),
+      };
 
-      // Dispatch SMS
-      const contactsToAlert = contacts.length === 3 ? contacts : contacts;
-      if (contactsToAlert.length === 0) {
-        setError('No emergency contacts found. Please add contacts first.');
-        setDispatching(false);
-        return;
-      }
-
-      const result = await dispatchSOS(contactsToAlert, location);
+      // 3. Dispatch SOS
+      const result = await dispatchSOS(contacts, location);
       setDispatchMethod(result.method);
 
-      // Start background tracking
-      try {
-        await startBackgroundTracking();
-      } catch (trackErr) {
-        console.warn('[SOS] Background tracking failed to start:', trackErr);
-      }
+      // 4. Start background tracking
+      await startBackgroundTracking();
 
-      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setDispatched(true);
-      setDispatching(false);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
 
       // Success animation
       Animated.spring(successScale, {
         toValue: 1,
-        tension: 50,
-        friction: 7,
+        friction: 5,
         useNativeDriver: true,
       }).start();
 
-      // Navigate to tracking screen after a short delay
+      // Navigate to tracking screen after 2.5 seconds
       setTimeout(() => {
         navigation.replace('TrackingActive');
       }, 2500);
-
     } catch (err: any) {
-      setError(err?.message ?? 'An unexpected error occurred.');
+      console.error('[Countdown] Dispatch error:', err);
+      setError(err?.message || 'Failed to dispatch SOS alerts. Please call emergency services.');
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
+    } finally {
       setDispatching(false);
     }
   }, [contacts, dispatching, dispatched, navigation, successScale]);
 
-  const { secondsLeft, progress } = useCountdown(COUNTDOWN_SECONDS, triggerDispatch);
+  // Use countdown hook
+  const { secondsLeft, progress, cancel } = useCountdown(
+    COUNTDOWN_SECONDS,
+    triggerDispatch,
+  );
 
   const handleYes = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
     triggerDispatch();
   };
 
   const handleNo = () => {
+    cancel();
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     navigation.navigate('Dashboard');
   };
 
-  // Animated progress ring values
-  const circumference = 2 * Math.PI * 80; // radius = 80
-  const strokeDashoffset = progress.interpolate({
-    inputRange: [0, 1],
-    outputRange: [circumference, 0],
-  });
-
-  const timerColor = secondsLeft <= 3 ? '#ff2d55' : secondsLeft <= 6 ? '#ff9500' : '#e91e8c';
+  const timerColor = secondsLeft <= 3 ? '#ff1744' : secondsLeft <= 6 ? '#f59e0b' : '#ff2d55';
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#1a0621" />
+      <StatusBar barStyle="light-content" backgroundColor="#09080e" />
 
       {/* Background */}
-      <View style={styles.bg} />
-      <View style={styles.bgBlob} />
+      <View style={styles.bgGlow} />
 
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.alertBadge}>🚨 SOS ALERT</Text>
-        <Text style={styles.headerTitle}>Do you want to send{'\n'}your location?</Text>
+        <View style={styles.alertBadge}>
+          <View style={styles.badgePulseDot} />
+          <Text style={styles.alertBadgeText}>EMERGENCY PROTOCOL</Text>
+        </View>
+        <Text style={styles.headerTitle}>Dispatching Live GPS Location</Text>
         <Text style={styles.headerSub}>
-          To the 3 emergency contacts you have provided
+          Alerting your 3 designated emergency contacts via SMS
         </Text>
       </View>
 
@@ -171,25 +162,26 @@ export default function SosCountdownScreen({ navigation }: Props) {
           ]}
         />
 
-        {/* SVG-like circular timer via View + border trick */}
+        {/* Circular timer frame */}
         <View style={[styles.progressRing, { borderColor: 'rgba(255,255,255,0.08)' }]}>
           <View style={styles.timerInner}>
             {dispatching ? (
-              <ActivityIndicator size="large" color="#e91e8c" />
+              <ActivityIndicator size="large" color="#ff2d55" />
             ) : dispatched ? (
               <Animated.View style={[styles.successCircle, { transform: [{ scale: successScale }] }]}>
-                <Text style={styles.successIcon}>✅</Text>
+                <Text style={styles.successTitle}>DISPATCHED</Text>
+                <Text style={styles.successSub}>LIVE RADAR ACTIVE</Text>
               </Animated.View>
             ) : (
               <>
                 <Text style={[styles.countdown, { color: timerColor }]}>{secondsLeft}</Text>
-                <Text style={styles.countdownLabel}>seconds</Text>
+                <Text style={styles.countdownLabel}>SECONDS</Text>
               </>
             )}
           </View>
         </View>
 
-        {/* Animated arc overlay using Animated border */}
+        {/* Animated arc overlay */}
         <Animated.View
           style={[
             styles.arcOverlay,
@@ -216,19 +208,19 @@ export default function SosCountdownScreen({ navigation }: Props) {
         {dispatched ? (
           <Text style={styles.statusTextSuccess}>
             {dispatchMethod === 'direct_background'
-              ? '⚡ Emergency alert sent directly in the background! Tracking is now active.'
-              : '🆘 Emergency alert dispatched! Tracking is now active.'}
+              ? 'Emergency alert sent in background. Live GPS tracking active.'
+              : 'Emergency alert dispatched. Live GPS tracking active.'}
           </Text>
         ) : dispatching ? (
           <Text style={styles.statusTextPending}>
-            📡 Getting your location & dispatching alerts...
+            Acquiring high-accuracy GPS coordinates & dispatching SMS...
           </Text>
         ) : (
           <Text style={styles.statusTextWarning}>
-            ⚠️ Alert will be sent automatically when timer reaches 0
+            Auto-dispatching to all 3 contacts when timer reaches 0
           </Text>
         )}
-        {error && <Text style={styles.errorText}>❌ {error}</Text>}
+        {error && <Text style={styles.errorText}>{error}</Text>}
       </View>
 
       {/* Action Buttons */}
@@ -238,22 +230,22 @@ export default function SosCountdownScreen({ navigation }: Props) {
             style={[styles.btnNo, dispatching && styles.btnDisabled]}
             onPress={handleNo}
             disabled={dispatching}
+            activeOpacity={0.8}
             accessibilityLabel="Cancel SOS - I am safe"
             accessibilityRole="button"
           >
-            <Text style={styles.btnNoIcon}>🟢</Text>
-            <Text style={styles.btnNoText}>No, I am Safe</Text>
+            <Text style={styles.btnNoText}>I am Safe (Cancel)</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={[styles.btnYes, dispatching && styles.btnDisabled]}
             onPress={handleYes}
             disabled={dispatching}
+            activeOpacity={0.88}
             accessibilityLabel="Send SOS now"
             accessibilityRole="button"
           >
-            <Text style={styles.btnYesIcon}>🆘</Text>
-            <Text style={styles.btnYesText}>Yes, Send Now</Text>
+            <Text style={styles.btnYesText}>Send SOS Now</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -261,10 +253,10 @@ export default function SosCountdownScreen({ navigation }: Props) {
       {/* Contact list preview */}
       {!dispatched && contacts.length > 0 && (
         <View style={styles.contactsList}>
-          <Text style={styles.contactsListTitle}>Will alert:</Text>
-          {contacts.map((c) => (
+          <Text style={styles.contactsListTitle}>TARGET CONTACTS</Text>
+          {contacts.map((c, i) => (
             <Text key={c.id} style={styles.contactsListItem}>
-              • {c.name} ({c.relationship}) — {c.phone}
+              0{i + 1} &bull; {c.name} ({c.relationship}) &mdash; {c.phone}
             </Text>
           ))}
         </View>
@@ -273,72 +265,78 @@ export default function SosCountdownScreen({ navigation }: Props) {
   );
 }
 
-const PINK = '#e91e8c';
-const DARK = '#1a0621';
+const ACCENT = '#ff2d55';
+const ACCENT_RED = '#ff1744';
+const DARK_BG = '#09080e';
+const SURFACE = '#14121f';
+const BORDER = 'rgba(255, 255, 255, 0.08)';
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: DARK,
+    backgroundColor: DARK_BG,
     alignItems: 'center',
   },
-  bg: {
+  bgGlow: {
     position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: '100%',
-    backgroundColor: '#100418',
-  },
-  bgBlob: {
-    position: 'absolute',
-    top: -100,
-    width: 400,
-    height: 400,
-    borderRadius: 200,
-    backgroundColor: 'rgba(233,30,140,0.08)',
+    top: -80,
+    width: 380,
+    height: 380,
+    borderRadius: 190,
+    backgroundColor: 'rgba(255, 45, 85, 0.07)',
     alignSelf: 'center',
   },
   header: {
     alignItems: 'center',
-    paddingTop: 70,
-    paddingBottom: 30,
-    paddingHorizontal: 30,
+    paddingTop: 65,
+    paddingBottom: 25,
+    paddingHorizontal: 25,
   },
   alertBadge: {
-    backgroundColor: 'rgba(233,30,140,0.2)',
-    color: PINK,
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 2,
-    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 45, 85, 0.12)',
+    paddingHorizontal: 14,
     paddingVertical: 6,
-    borderRadius: 20,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(233,30,140,0.4)',
+    borderColor: 'rgba(255, 45, 85, 0.35)',
     marginBottom: 16,
-    overflow: 'hidden',
+    gap: 8,
+  },
+  badgePulseDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: ACCENT,
+  },
+  alertBadgeText: {
+    color: ACCENT,
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 1.5,
   },
   headerTitle: {
     color: '#ffffff',
-    fontSize: 26,
+    fontSize: 24,
     fontWeight: '800',
     textAlign: 'center',
-    lineHeight: 34,
-    marginBottom: 10,
+    lineHeight: 32,
+    marginBottom: 8,
+    letterSpacing: -0.3,
   },
   headerSub: {
-    color: 'rgba(255,255,255,0.5)',
-    fontSize: 14,
+    color: '#8e8a9f',
+    fontSize: 13,
     textAlign: 'center',
-    lineHeight: 20,
+    lineHeight: 18,
   },
   timerSection: {
     width: 200,
     height: 200,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 30,
+    marginVertical: 24,
     position: 'relative',
   },
   pulseRing: {
@@ -346,144 +344,152 @@ const styles = StyleSheet.create({
     width: 200,
     height: 200,
     borderRadius: 100,
-    borderWidth: 3,
+    borderWidth: 2,
   },
   progressRing: {
     width: 176,
     height: 176,
     borderRadius: 88,
-    borderWidth: 8,
+    borderWidth: 6,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.03)',
+    backgroundColor: SURFACE,
   },
   timerInner: {
     alignItems: 'center',
   },
   countdown: {
-    fontSize: 72,
+    fontSize: 70,
     fontWeight: '900',
-    lineHeight: 80,
+    lineHeight: 76,
   },
   countdownLabel: {
-    color: 'rgba(255,255,255,0.4)',
-    fontSize: 14,
-    fontWeight: '600',
-    letterSpacing: 1,
+    color: '#8e8a9f',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 2,
   },
   successCircle: {
     alignItems: 'center',
+    paddingHorizontal: 12,
   },
-  successIcon: {
-    fontSize: 60,
+  successTitle: {
+    color: '#10b981',
+    fontSize: 16,
+    fontWeight: '900',
+    letterSpacing: 1.5,
+  },
+  successSub: {
+    color: '#8e8a9f',
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 1,
+    marginTop: 4,
   },
   arcOverlay: {
     position: 'absolute',
     width: 176,
     height: 176,
     borderRadius: 88,
-    borderWidth: 8,
+    borderWidth: 6,
     borderColor: 'transparent',
   },
   statusSection: {
     paddingHorizontal: 30,
-    marginBottom: 30,
+    marginBottom: 26,
     alignItems: 'center',
   },
   statusTextWarning: {
-    color: 'rgba(255,200,80,0.9)',
-    fontSize: 14,
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-  statusTextPending: {
-    color: 'rgba(150,200,255,0.9)',
-    fontSize: 14,
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-  statusTextSuccess: {
-    color: 'rgba(100,255,160,0.9)',
-    fontSize: 14,
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-  errorText: {
-    color: '#ff6b6b',
+    color: '#f59e0b',
     fontSize: 13,
     textAlign: 'center',
-    marginTop: 8,
     lineHeight: 18,
+    fontWeight: '600',
+  },
+  statusTextPending: {
+    color: '#60a5fa',
+    fontSize: 13,
+    textAlign: 'center',
+    lineHeight: 18,
+    fontWeight: '600',
+  },
+  statusTextSuccess: {
+    color: '#10b981',
+    fontSize: 13,
+    textAlign: 'center',
+    lineHeight: 18,
+    fontWeight: '600',
+  },
+  errorText: {
+    color: '#ff4d4d',
+    fontSize: 12,
+    textAlign: 'center',
+    marginTop: 8,
+    lineHeight: 17,
+    fontWeight: '600',
   },
   buttonRow: {
     flexDirection: 'row',
     paddingHorizontal: 20,
-    gap: 14,
+    gap: 12,
     marginBottom: 24,
     width: '100%',
   },
   btnNo: {
     flex: 1,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    borderRadius: 18,
-    paddingVertical: 18,
+    backgroundColor: SURFACE,
+    borderRadius: 14,
+    paddingVertical: 16,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
+    borderColor: BORDER,
+  },
+  btnNoText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '700',
+    letterSpacing: 0.3,
   },
   btnYes: {
     flex: 1,
-    backgroundColor: PINK,
-    borderRadius: 18,
-    paddingVertical: 18,
+    backgroundColor: ACCENT_RED,
+    borderRadius: 14,
+    paddingVertical: 16,
     alignItems: 'center',
-    shadowColor: PINK,
+    shadowColor: ACCENT_RED,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.5,
     shadowRadius: 12,
     elevation: 8,
   },
-  btnDisabled: {
-    opacity: 0.5,
-  },
-  btnNoIcon: {
-    fontSize: 22,
-    marginBottom: 4,
-  },
-  btnNoText: {
-    color: 'rgba(255,255,255,0.85)',
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  btnYesIcon: {
-    fontSize: 22,
-    marginBottom: 4,
-  },
   btnYesText: {
     color: '#ffffff',
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  btnDisabled: {
+    opacity: 0.5,
   },
   contactsList: {
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
     width: '90%',
+    backgroundColor: SURFACE,
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: BORDER,
   },
   contactsListTitle: {
-    color: 'rgba(255,255,255,0.5)',
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 1,
+    color: '#8e8a9f',
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 1.2,
     marginBottom: 8,
-    textTransform: 'uppercase',
   },
   contactsListItem: {
-    color: 'rgba(255,255,255,0.75)',
-    fontSize: 13,
-    lineHeight: 22,
+    color: 'rgba(255, 255, 255, 0.75)',
+    fontSize: 12,
+    lineHeight: 18,
+    marginBottom: 3,
   },
 });

@@ -41,7 +41,7 @@ export async function requestSendSmsPermission(): Promise<boolean> {
       {
         title: 'Emergency Direct SMS Permission',
         message:
-          'SafeHer needs permission to send emergency SOS alerts directly in the background to your 3 contacts without requiring manual confirmation clicks.',
+          'BehenSafeHai? needs permission to send emergency SOS alerts directly in the background to your 3 contacts without requiring manual confirmation clicks.',
         buttonPositive: 'Allow Direct SMS',
         buttonNegative: 'Ask Later',
       },

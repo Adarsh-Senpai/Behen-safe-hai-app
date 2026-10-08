@@ -49,7 +49,7 @@ describe('SMS & Emergency Dispatch Service', () => {
       expect(message).toContain('https://maps.google.com/?q=28.6139,77.209');
       expect(message).toContain('Accuracy: 12m');
       expect(message).toContain('Battery: 85%');
-      expect(message).toContain('SafeHer Safety App');
+      expect(message).toContain('BehenSafeHai? Safety App');
     });
 
     it('handles payload without battery level gracefully', () => {

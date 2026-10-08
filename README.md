@@ -1,15 +1,15 @@
-# SafeHer — Women Safety Mobile Application
+# BehenSafeHai? — Women Safety Mobile Application
 
-SafeHer is a production-grade, 100% free-to-operate Women Safety application built with React Native and Expo (TypeScript). It operates completely independently of expensive third-party SMS or mapping API keys, leveraging the device's native carrier SMS connection and standard GPS navigation URLs.
+BehenSafeHai? is a production-grade, 100% free-to-operate Women Safety application built with React Native and Expo (TypeScript). It operates completely independently of expensive third-party SMS or mapping API keys, leveraging the device's native carrier SMS connection and standard GPS navigation URLs.
 
 ---
 
-## 🌟 Key Architecture & Features
+## Key Architecture & Features
 
 1. **Phone Home Screen Widget & Native App Shortcuts (1-Tap SOS)**
    - Configured via `expo-quick-actions` with custom URL scheme `womensafety://sos`.
-   - **Pinned Home Screen Widget:** Long-press the SafeHer app icon, hold "Emergency SOS", and drag it to your phone's home screen. Tapping it cold-boots straight into the countdown with **zero app browsing**.
-   - **Android Native App Widget:** Includes native AppWidgetProvider config plugin (`plugins/withSosWidget.js`) rendering a large high-contrast SOS emergency widget for the Android widget drawer.
+   - **Pinned Home Screen Widget:** Long-press the BehenSafeHai? app icon, hold "Emergency SOS", and drag it to your phone's home screen. Tapping it cold-boots straight into the countdown with **zero app browsing**.
+   - **Android Native App Widget:** Includes native AppWidgetProvider config plugin (`plugins/withSosWidget.js`) rendering a sleek obsidian & electric crimson emergency widget for the Android widget drawer.
 
 2. **10-Second Auto-Dispatch Fail-Safe**
    - High-contrast visual countdown screen with pulsing rings and multi-stage haptic feedback (`expo-haptics`).
@@ -115,7 +115,7 @@ npx expo start
      ```
    - The app will immediately cold-boot or navigate directly to the `SosCountdownScreen`.
 2. **App Launcher Quick Action:**
-   - On a standalone or development build, long-press the **SafeHer** app icon on the home screen.
+   - On a standalone or development build, long-press the **BehenSafeHai?** app icon on the home screen.
    - Tap **Emergency SOS** to launch directly into countdown mode.
 
 ---
@@ -147,9 +147,9 @@ To build standalone APK/AAB or IPA binaries with native background location serv
 
 ---
 
-## 🛡️ Running Unit Tests
+## Running Unit Tests
 
-SafeHer includes unit tests covering:
+BehenSafeHai? includes unit tests covering:
 - International & domestic phone validation
 - Emergency message payload generation
 - Offline contact persistence

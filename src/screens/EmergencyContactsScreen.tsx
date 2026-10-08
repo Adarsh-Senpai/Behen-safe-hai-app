@@ -110,7 +110,7 @@ export default function EmergencyContactsScreen({ navigation }: Props) {
       if (status !== 'granted') {
         Alert.alert(
           'Permission Required',
-          'Access to contacts is required so you can select your emergency contacts directly from your address book. Please enable contact permissions in your device settings.',
+          'Access to contacts is required to select emergency contacts directly from your address book. Please enable contact permissions in your device settings.',
           [{ text: 'OK' }]
         );
         return;
@@ -119,11 +119,11 @@ export default function EmergencyContactsScreen({ navigation }: Props) {
       let selectedName = '';
       let selectedPhone = '';
 
-      // Try modern Contact.presentPicker() first (Expo SDK 52/53 standard)
+      // Try modern Contact.presentPicker() first
       if (Contacts.Contact && typeof Contacts.Contact.presentPicker === 'function') {
         const picked = await Contacts.Contact.presentPicker();
         if (!picked) {
-          return; // User cancelled
+          return;
         }
 
         if (typeof picked.getFullName === 'function') {
@@ -195,17 +195,16 @@ export default function EmergencyContactsScreen({ navigation }: Props) {
 
       if (!selectedPhone) {
         Alert.alert(
-          'No Phone Number Found',
-          `"${selectedName || 'The contact'}" was selected, but does not have a saved phone number in your address book. Please enter their mobile number manually.`,
+          'No Phone Number',
+          `"${selectedName || 'The contact'}" was selected, but does not have a saved phone number. Please enter their mobile number manually.`,
           [{ text: 'OK' }]
         );
       }
     } catch (err: any) {
       console.warn('[Contacts] Error picking contact:', err);
       Alert.alert(
-        'Could Not Pick Contact',
-        err?.message ||
-          'An error occurred while opening the contact book. Please enter the details manually.'
+        'Selection Error',
+        err?.message || 'Could not open contact picker. Please enter details manually.'
       );
     }
   };
@@ -243,7 +242,7 @@ export default function EmergencyContactsScreen({ navigation }: Props) {
     if (!validateAll()) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
       Alert.alert(
-        'Incomplete Information',
+        'Incomplete Details',
         'Please provide valid names and phone numbers for all 3 emergency contacts.',
       );
       return;
@@ -262,8 +261,8 @@ export default function EmergencyContactsScreen({ navigation }: Props) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
 
       Alert.alert(
-        'Contacts Saved',
-        'All 3 emergency contacts have been saved securely on this device.',
+        'Contacts Encrypted & Saved',
+        'All 3 emergency contacts are secured locally on your device.',
         [
           {
             text: 'Return to Dashboard',
@@ -281,8 +280,8 @@ export default function EmergencyContactsScreen({ navigation }: Props) {
   if (loading) {
     return (
       <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#e91e8c" />
-        <Text style={styles.loadingText}>Loading contacts...</Text>
+        <ActivityIndicator size="large" color="#ff2d55" />
+        <Text style={styles.loadingText}>Loading encrypted contacts...</Text>
       </View>
     );
   }
@@ -292,7 +291,7 @@ export default function EmergencyContactsScreen({ navigation }: Props) {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       style={styles.container}
     >
-      <StatusBar barStyle="light-content" backgroundColor="#0d0621" />
+      <StatusBar barStyle="light-content" backgroundColor="#09080e" />
 
       <ScrollView
         contentContainerStyle={styles.scrollContent}
@@ -305,18 +304,20 @@ export default function EmergencyContactsScreen({ navigation }: Props) {
             onPress={() => navigation.goBack()}
             accessibilityLabel="Back"
           >
-            <Text style={styles.backButtonText}>←</Text>
+            <Text style={styles.backButtonText}>&larr;</Text>
           </TouchableOpacity>
           <View style={styles.headerTitles}>
             <Text style={styles.headerTitle}>Emergency Contacts</Text>
-            <Text style={styles.headerSub}>Setup exactly 3 trusted contacts for SOS alerts</Text>
+            <Text style={styles.headerSub}>Setup 3 trusted contacts for automatic SOS alerts</Text>
           </View>
         </View>
 
         <View style={styles.infoBox}>
-          <Text style={styles.infoBoxIcon}>ℹ️</Text>
+          <View style={styles.infoBadge}>
+            <Text style={styles.infoBadgeText}>NOTICE</Text>
+          </View>
           <Text style={styles.infoBoxText}>
-            When SOS is triggered, your GPS location will automatically be dispatched to these 3 contacts via SMS. Tap "Pick from Phone" on any card to select directly from your address book, or type manually.
+            When SOS is triggered, your live GPS location will be dispatched to these 3 contacts via carrier SMS. Stored 100% offline.
           </Text>
         </View>
 
@@ -328,57 +329,56 @@ export default function EmergencyContactsScreen({ navigation }: Props) {
               <View style={styles.cardHeader}>
                 <View style={styles.cardHeaderLeft}>
                   <View style={styles.badgeIndex}>
-                    <Text style={styles.badgeIndexText}>#{index + 1}</Text>
+                    <Text style={styles.badgeIndexText}>0{index + 1}</Text>
                   </View>
                   <Text style={styles.cardTitle}>Contact {index + 1}</Text>
                 </View>
                 <TouchableOpacity
                   style={styles.pickButton}
                   onPress={() => handlePickFromBook(index)}
-                  activeOpacity={0.7}
-                  accessibilityLabel={`Pick Contact ${index + 1} from phone book`}
+                  activeOpacity={0.75}
+                  accessibilityLabel={`Import Contact ${index + 1} from phone book`}
                 >
-                  <Text style={styles.pickButtonIcon}>📖</Text>
-                  <Text style={styles.pickButtonText}>Pick from Phone</Text>
+                  <Text style={styles.pickButtonText}>+ Import Contact</Text>
                 </TouchableOpacity>
               </View>
 
               {/* Name field */}
               <View style={styles.fieldGroup}>
-                <Text style={styles.label}>Full Name</Text>
+                <Text style={styles.label}>FULL NAME</Text>
                 <TextInput
                   style={[styles.input, itemErrors.name ? styles.inputError : null]}
                   placeholder="e.g. Mom, Sarah Johnson"
-                  placeholderTextColor="rgba(255,255,255,0.3)"
+                  placeholderTextColor="#484459"
                   value={item.name}
                   onChangeText={(val) => updateField(index, 'name', val)}
                   autoCapitalize="words"
                 />
                 {itemErrors.name ? (
-                  <Text style={styles.errorText}>⚠️ {itemErrors.name}</Text>
+                  <Text style={styles.errorText}>&bull; {itemErrors.name}</Text>
                 ) : null}
               </View>
 
               {/* Phone field */}
               <View style={styles.fieldGroup}>
-                <Text style={styles.label}>Mobile Number (with country code if needed)</Text>
+                <Text style={styles.label}>MOBILE NUMBER</Text>
                 <TextInput
                   style={[styles.input, itemErrors.phone ? styles.inputError : null]}
-                  placeholder="e.g. +14155552671 or 9876543210"
-                  placeholderTextColor="rgba(255,255,255,0.3)"
+                  placeholder="e.g. +91 9876543210 or +1 415 555 2671"
+                  placeholderTextColor="#484459"
                   value={item.phone}
                   onChangeText={(val) => updateField(index, 'phone', val)}
                   keyboardType="phone-pad"
                   autoCapitalize="none"
                 />
                 {itemErrors.phone ? (
-                  <Text style={styles.errorText}>⚠️ {itemErrors.phone}</Text>
+                  <Text style={styles.errorText}>&bull; {itemErrors.phone}</Text>
                 ) : null}
               </View>
 
               {/* Relationship picker chips */}
               <View style={styles.fieldGroup}>
-                <Text style={styles.label}>Relationship</Text>
+                <Text style={styles.label}>RELATIONSHIP</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsScroll}>
                   {RELATIONSHIPS.map((rel) => {
                     const isSelected = item.relationship === rel;
@@ -389,7 +389,7 @@ export default function EmergencyContactsScreen({ navigation }: Props) {
                         onPress={() => updateField(index, 'relationship', rel)}
                       >
                         <Text style={[styles.chipText, isSelected && styles.chipTextSelected]}>
-                          {rel}
+                          {rel.toUpperCase()}
                         </Text>
                       </TouchableOpacity>
                     );
@@ -404,12 +404,12 @@ export default function EmergencyContactsScreen({ navigation }: Props) {
           style={[styles.saveButton, saving && styles.saveButtonDisabled]}
           onPress={handleSave}
           disabled={saving}
-          activeOpacity={0.8}
+          activeOpacity={0.88}
         >
           {saving ? (
             <ActivityIndicator color="#ffffff" />
           ) : (
-            <Text style={styles.saveButtonText}>Save 3 Emergency Contacts</Text>
+            <Text style={styles.saveButtonText}>SAVE 3 EMERGENCY CONTACTS</Text>
           )}
         </TouchableOpacity>
       </ScrollView>
@@ -417,31 +417,32 @@ export default function EmergencyContactsScreen({ navigation }: Props) {
   );
 }
 
-const PINK = '#e91e8c';
-const DARK = '#0d0621';
-const CARD = 'rgba(255,255,255,0.06)';
-const BORDER = 'rgba(255,255,255,0.12)';
+const ACCENT = '#ff2d55';
+const ACCENT_RED = '#ff1744';
+const DARK_BG = '#09080e';
+const SURFACE = '#14121f';
+const BORDER = 'rgba(255, 255, 255, 0.08)';
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: DARK,
+    backgroundColor: DARK_BG,
   },
   centerContainer: {
     flex: 1,
-    backgroundColor: DARK,
+    backgroundColor: DARK_BG,
     justifyContent: 'center',
     alignItems: 'center',
   },
   loadingText: {
-    color: 'rgba(255,255,255,0.7)',
+    color: '#8e8a9f',
     marginTop: 12,
-    fontSize: 14,
+    fontSize: 13,
   },
   scrollContent: {
     paddingHorizontal: 20,
-    paddingTop: 50,
-    paddingBottom: 40,
+    paddingTop: 55,
+    paddingBottom: 45,
   },
   header: {
     flexDirection: 'row',
@@ -449,10 +450,10 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: CARD,
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    backgroundColor: SURFACE,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 14,
@@ -461,7 +462,7 @@ const styles = StyleSheet.create({
   },
   backButtonText: {
     color: '#ffffff',
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '700',
   },
   headerTitles: {
@@ -471,38 +472,51 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 22,
     fontWeight: '800',
+    letterSpacing: -0.3,
   },
   headerSub: {
-    color: 'rgba(255,255,255,0.5)',
-    fontSize: 13,
+    color: '#8e8a9f',
+    fontSize: 12,
     marginTop: 2,
   },
   infoBox: {
     flexDirection: 'row',
-    backgroundColor: 'rgba(233,30,140,0.1)',
-    borderRadius: 14,
-    padding: 14,
+    alignItems: 'center',
+    backgroundColor: SURFACE,
+    borderRadius: 12,
+    padding: 12,
     borderWidth: 1,
-    borderColor: 'rgba(233,30,140,0.25)',
+    borderColor: BORDER,
     marginBottom: 22,
+    gap: 10,
   },
-  infoBoxIcon: {
-    fontSize: 18,
-    marginRight: 10,
+  infoBadge: {
+    backgroundColor: 'rgba(255, 45, 85, 0.15)',
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 45, 85, 0.3)',
+  },
+  infoBadgeText: {
+    color: ACCENT,
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.8,
   },
   infoBoxText: {
     flex: 1,
-    color: 'rgba(255,255,255,0.75)',
+    color: '#8e8a9f',
     fontSize: 12,
-    lineHeight: 18,
+    lineHeight: 17,
   },
   card: {
-    backgroundColor: CARD,
-    borderRadius: 18,
+    backgroundColor: SURFACE,
+    borderRadius: 16,
     padding: 16,
     borderWidth: 1,
     borderColor: BORDER,
-    marginBottom: 18,
+    marginBottom: 16,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -515,8 +529,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   badgeIndex: {
-    backgroundColor: PINK,
-    borderRadius: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderRadius: 6,
     paddingHorizontal: 8,
     paddingVertical: 3,
     marginRight: 10,
@@ -524,108 +538,104 @@ const styles = StyleSheet.create({
   badgeIndexText: {
     color: '#ffffff',
     fontWeight: '800',
-    fontSize: 12,
+    fontSize: 11,
+    letterSpacing: 0.5,
   },
   cardTitle: {
     color: '#ffffff',
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
   },
   pickButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(233, 30, 140, 0.15)',
+    backgroundColor: 'rgba(255, 45, 85, 0.12)',
     borderWidth: 1,
-    borderColor: 'rgba(233, 30, 140, 0.45)',
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 12,
-  },
-  pickButtonIcon: {
-    fontSize: 13,
-    marginRight: 5,
+    borderColor: 'rgba(255, 45, 85, 0.35)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
   },
   pickButtonText: {
-    color: '#ff4081',
-    fontSize: 12,
+    color: ACCENT,
+    fontSize: 11,
     fontWeight: '700',
-    letterSpacing: 0.2,
+    letterSpacing: 0.3,
   },
   fieldGroup: {
     marginBottom: 14,
   },
   label: {
-    color: 'rgba(255,255,255,0.7)',
-    fontSize: 12,
-    fontWeight: '600',
+    color: '#8e8a9f',
+    fontSize: 10,
+    fontWeight: '800',
     marginBottom: 6,
-    letterSpacing: 0.3,
+    letterSpacing: 0.8,
   },
   input: {
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
     borderWidth: 1,
     borderColor: BORDER,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 11,
     color: '#ffffff',
     fontSize: 14,
   },
   inputError: {
     borderColor: '#ff4d4d',
-    backgroundColor: 'rgba(255,77,77,0.08)',
+    backgroundColor: 'rgba(255, 77, 77, 0.06)',
   },
   errorText: {
-    color: '#ff6b6b',
-    fontSize: 12,
+    color: '#ff4d4d',
+    fontSize: 11,
     marginTop: 4,
-    fontWeight: '500',
+    fontWeight: '600',
   },
   chipsScroll: {
     flexDirection: 'row',
     marginTop: 4,
   },
   chip: {
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
     marginRight: 8,
     borderWidth: 1,
     borderColor: BORDER,
   },
   chipSelected: {
-    backgroundColor: PINK,
-    borderColor: PINK,
+    backgroundColor: ACCENT,
+    borderColor: ACCENT,
   },
   chipText: {
-    color: 'rgba(255,255,255,0.6)',
-    fontSize: 12,
-    fontWeight: '600',
+    color: '#8e8a9f',
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
   chipTextSelected: {
     color: '#ffffff',
-    fontWeight: '700',
+    fontWeight: '800',
   },
   saveButton: {
-    backgroundColor: PINK,
-    borderRadius: 16,
-    paddingVertical: 18,
+    backgroundColor: ACCENT_RED,
+    borderRadius: 14,
+    paddingVertical: 16,
     alignItems: 'center',
     marginTop: 10,
-    shadowColor: PINK,
+    shadowColor: ACCENT_RED,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
+    shadowOpacity: 0.5,
+    shadowRadius: 14,
     elevation: 8,
   },
   saveButtonDisabled: {
-    opacity: 0.6,
+    opacity: 0.5,
   },
   saveButtonText: {
     color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '800',
-    letterSpacing: 0.5,
+    fontSize: 13,
+    fontWeight: '900',
+    letterSpacing: 1.2,
   },
 });

@@ -21,20 +21,19 @@ export default function DashboardScreen({ navigation }: Props) {
   const [trackingActive, setTrackingActive] = React.useState(false);
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const glowAnim = useRef(new Animated.Value(0)).current;
-  const shimmerAnim = useRef(new Animated.Value(0)).current;
 
   // SOS button pulse animation
   useEffect(() => {
     const pulse = Animated.loop(
       Animated.sequence([
         Animated.timing(pulseAnim, {
-          toValue: 1.06,
-          duration: 800,
+          toValue: 1.05,
+          duration: 900,
           useNativeDriver: true,
         }),
         Animated.timing(pulseAnim, {
           toValue: 1,
-          duration: 800,
+          duration: 900,
           useNativeDriver: true,
         }),
       ]),
@@ -45,12 +44,12 @@ export default function DashboardScreen({ navigation }: Props) {
       Animated.sequence([
         Animated.timing(glowAnim, {
           toValue: 1,
-          duration: 1500,
+          duration: 1600,
           useNativeDriver: true,
         }),
         Animated.timing(glowAnim, {
           toValue: 0,
-          duration: 1500,
+          duration: 1600,
           useNativeDriver: true,
         }),
       ]),
@@ -84,10 +83,10 @@ export default function DashboardScreen({ navigation }: Props) {
   const handleSOSPress = () => {
     if (!hasAllContacts) {
       Alert.alert(
-        '⚠️ No Emergency Contacts',
-        'Please set up 3 emergency contacts before activating SOS.',
+        'Setup Required',
+        'Please save 3 emergency contacts before triggering SOS.',
         [
-          { text: 'Set Up Now', onPress: () => navigation.navigate('EmergencyContacts') },
+          { text: 'Configure Now', onPress: () => navigation.navigate('EmergencyContacts') },
           { text: 'Cancel', style: 'cancel' },
         ],
       );
@@ -98,102 +97,136 @@ export default function DashboardScreen({ navigation }: Props) {
 
   const glowOpacity = glowAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [0.35, 0.9],
+    outputRange: [0.3, 0.85],
   });
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0d0621" />
+      <StatusBar barStyle="light-content" backgroundColor="#09080e" />
 
-      {/* Background gradient layers */}
-      <View style={styles.bgTop} />
-      <View style={styles.bgBlob1} />
-      <View style={styles.bgBlob2} />
+      {/* Modern ambient glow layers */}
+      <View style={styles.bgGlowTop} />
+      <View style={styles.bgGlowCenter} />
 
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
+        {/* Modern Minimal Header */}
         <View style={styles.header}>
-          <View style={styles.logoRow}>
-            <Text style={styles.logoIcon}>🛡️</Text>
-            <Text style={styles.logoText}>SafeHer</Text>
+          <View style={styles.brandRow}>
+            <View style={styles.brandPulseDot} />
+            <Text style={styles.brandTitle}>
+              BehenSafeHai<Text style={styles.brandAccent}>?</Text>
+            </Text>
           </View>
-          <Text style={styles.tagline}>Your safety, our priority</Text>
+          <Text style={styles.brandTagline}>INSTANT SOS &bull; LIVE LOCATION &bull; 100% OFFLINE</Text>
         </View>
 
-        {/* Status Cards */}
+        {/* Minimal High-Contrast Status Pills */}
         <View style={styles.statusRow}>
-          <View style={[styles.statusCard, hasAllContacts ? styles.statusGood : styles.statusWarn]}>
-            <Text style={styles.statusIcon}>{hasAllContacts ? '✅' : '⚠️'}</Text>
-            <Text style={styles.statusLabel}>
-              {hasAllContacts ? '3 Contacts Ready' : 'Contacts Missing'}
+          <View style={[styles.statusPill, hasAllContacts ? styles.pillSuccess : styles.pillWarn]}>
+            <View style={[styles.statusDot, hasAllContacts ? styles.dotGreen : styles.dotAmber]} />
+            <Text style={styles.statusPillText}>
+              {hasAllContacts ? '3 CONTACTS SYNCED' : 'SETUP CONTACTS'}
             </Text>
           </View>
-          <View style={[styles.statusCard, trackingActive ? styles.statusAlert : styles.statusNeutral]}>
-            <Text style={styles.statusIcon}>{trackingActive ? '📡' : '📍'}</Text>
-            <Text style={styles.statusLabel}>
-              {trackingActive ? 'Tracking Active' : 'Tracking Off'}
+          <View style={[styles.statusPill, trackingActive ? styles.pillAlert : styles.pillIdle]}>
+            <View style={[styles.statusDot, trackingActive ? styles.dotRed : styles.dotMuted]} />
+            <Text style={styles.statusPillText}>
+              {trackingActive ? 'TRACKING LIVE' : 'SYSTEM READY'}
             </Text>
           </View>
         </View>
 
-        {/* SOS Button */}
+        {/* Tactile SOS Trigger */}
         <View style={styles.sosSection}>
-          <Text style={styles.sosHintText}>Hold to activate emergency SOS</Text>
+          <Text style={styles.sosHintText}>PRESS TO DISPATCH EMERGENCY ALERT</Text>
 
           {/* Outer glow ring */}
-          <Animated.View
-            style={[styles.sosGlowRing, { opacity: glowOpacity }]}
-          >
-            {/* Middle ring */}
+          <Animated.View style={[styles.sosGlowRing, { opacity: glowOpacity }]}>
+            {/* Middle halo */}
             <View style={styles.sosMidRing}>
-              {/* Button */}
+              {/* Trigger Button */}
               <Animated.View style={[{ transform: [{ scale: pulseAnim }] }]}>
                 <TouchableOpacity
                   style={styles.sosButton}
                   onPress={handleSOSPress}
-                  activeOpacity={0.85}
+                  activeOpacity={0.88}
                   accessibilityLabel="Emergency SOS Button"
                   accessibilityRole="button"
                 >
-                  <Text style={styles.sosButtonIcon}>🆘</Text>
-                  <Text style={styles.sosButtonText}>SOS</Text>
-                  <Text style={styles.sosButtonSub}>EMERGENCY</Text>
+                  <View style={styles.sosButtonInner}>
+                    <Text style={styles.sosButtonText}>SOS</Text>
+                    <View style={styles.sosDivider} />
+                    <Text style={styles.sosButtonSub}>EMERGENCY</Text>
+                  </View>
                 </TouchableOpacity>
               </Animated.View>
             </View>
           </Animated.View>
 
           <Text style={styles.sosDescription}>
-            Sends your GPS location to all 3 emergency contacts instantly via SMS
+            Dispatches live GPS coordinates to your 3 trusted contacts via carrier SMS
           </Text>
         </View>
 
-        {/* Action Cards */}
+        {/* Trendy Action Cards */}
         <View style={styles.actionGrid}>
           <TouchableOpacity
             style={styles.actionCard}
             onPress={() => navigation.navigate('EmergencyContacts')}
+            activeOpacity={0.75}
             accessibilityLabel="Manage Emergency Contacts"
           >
-            <Text style={styles.actionCardIcon}>👥</Text>
-            <Text style={styles.actionCardTitle}>Emergency Contacts</Text>
+            <View style={styles.actionCardHeader}>
+              <View style={styles.actionBadge}>
+                <Text style={styles.actionBadgeText}>{contacts.length}/3</Text>
+              </View>
+              <Text style={styles.actionCardArrow}>&rarr;</Text>
+            </View>
+            <Text style={styles.actionCardTitle}>Trusted Contacts</Text>
             <Text style={styles.actionCardSub}>
-              {loading ? 'Loading...' : `${contacts.length}/3 saved`}
+              {loading ? 'Checking...' : hasAllContacts ? 'All 3 configured' : 'Add remaining contacts'}
             </Text>
           </TouchableOpacity>
 
-          {trackingActive && (
+          {trackingActive ? (
             <TouchableOpacity
               style={[styles.actionCard, styles.actionCardAlert]}
               onPress={() => navigation.navigate('TrackingActive')}
+              activeOpacity={0.75}
               accessibilityLabel="View Active Tracking"
             >
-              <Text style={styles.actionCardIcon}>🗺️</Text>
-              <Text style={styles.actionCardTitle}>Live Tracking</Text>
-              <Text style={styles.actionCardSub}>Emergency mode ON</Text>
+              <View style={styles.actionCardHeader}>
+                <View style={[styles.actionBadge, styles.actionBadgeAlert]}>
+                  <Text style={[styles.actionBadgeText, styles.actionBadgeTextAlert]}>LIVE</Text>
+                </View>
+                <Text style={styles.actionCardArrow}>&rarr;</Text>
+              </View>
+              <Text style={styles.actionCardTitle}>Live GPS Radar</Text>
+              <Text style={styles.actionCardSub}>Location broadcast active</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              style={styles.actionCard}
+              onPress={() => {
+                Alert.alert(
+                  'Safety Check',
+                  'BehenSafeHai? runs offline on your phone without external servers or subscriptions. In emergencies, tap SOS for instant 10-second dispatch.',
+                  [{ text: 'Understood' }]
+                );
+              }}
+              activeOpacity={0.75}
+            >
+              <View style={styles.actionCardHeader}>
+                <View style={styles.actionBadge}>
+                  <Text style={styles.actionBadgeText}>SECURE</Text>
+                </View>
+                <Text style={styles.actionCardArrow}>&rarr;</Text>
+              </View>
+              <Text style={styles.actionCardTitle}>Zero-Cost Safety</Text>
+              <Text style={styles.actionCardSub}>Carrier SMS &bull; Offline first</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -203,13 +236,13 @@ export default function DashboardScreen({ navigation }: Props) {
           style={styles.widgetCard}
           onPress={() => {
             Alert.alert(
-              '📲 Home Screen SOS Widget',
-              'To place the SOS Widget on your phone home screen:\n\n' +
+              'Home Screen SOS Widget',
+              'To place the one-tap SOS Widget on your phone home screen:\n\n' +
                 '1. Go to your phone Home Screen.\n' +
-                '2. Long-press the SafeHer app icon.\n' +
-                '3. Press & hold the "Emergency SOS" shortcut popup.\n' +
-                '4. Drag and place it anywhere on your home screen.\n\n' +
-                'Tapping that widget will cold-boot straight into the SOS countdown!',
+                '2. Long-press the BehenSafeHai? app icon.\n' +
+                '3. Press & hold "Emergency SOS" in the menu.\n' +
+                '4. Drag and place it on your home screen.\n\n' +
+                'Tapping that widget launches straight into the SOS countdown with 0 clicks!',
               [
                 {
                   text: 'Test Widget Trigger Now',
@@ -222,41 +255,46 @@ export default function DashboardScreen({ navigation }: Props) {
           activeOpacity={0.8}
         >
           <View style={styles.widgetCardHeader}>
-            <Text style={styles.widgetCardIcon}>📌</Text>
-            <View style={styles.widgetCardTextWrap}>
-              <Text style={styles.widgetCardTitle}>Home Screen SOS Widget</Text>
-              <Text style={styles.widgetCardSub}>
-                1-tap trigger from phone home screen without opening app
-              </Text>
+            <View style={styles.widgetTag}>
+              <Text style={styles.widgetTagText}>QUICK LAUNCH</Text>
             </View>
-            <Text style={styles.widgetCardArrow}>›</Text>
+            <Text style={styles.widgetCardArrow}>&rarr;</Text>
           </View>
+          <Text style={styles.widgetCardTitle}>Home Screen SOS Widget</Text>
+          <Text style={styles.widgetCardSub}>
+            Pin a 1-tap emergency trigger to your home screen without opening the app
+          </Text>
         </TouchableOpacity>
 
-        {/* Direct SMS Mode Banner */}
+        {/* Direct Background Dispatch Notice */}
         <View style={styles.directSmsBanner}>
-          <Text style={styles.directSmsIcon}>⚡</Text>
+          <View style={styles.bannerDot} />
           <Text style={styles.directSmsText}>
-            <Text style={styles.boldText}>Direct SMS Mode: </Text>
-            In standalone Android builds, alerts are dispatched directly in background with 0 clicks.
+            <Text style={styles.boldText}>DIRECT CARRIER DISPATCH: </Text>
+            Standalone Android builds dispatch alerts automatically in the background.
           </Text>
         </View>
 
         {/* Contact List Preview */}
         {contacts.length > 0 && (
           <View style={styles.contactPreview}>
-            <Text style={styles.sectionTitle}>Emergency Contacts</Text>
+            <View style={styles.previewHeader}>
+              <Text style={styles.sectionTitle}>CONFIGURED CONTACTS</Text>
+              <TouchableOpacity onPress={() => navigation.navigate('EmergencyContacts')}>
+                <Text style={styles.editLink}>EDIT &rarr;</Text>
+              </TouchableOpacity>
+            </View>
             {contacts.map((c, i) => (
               <View key={c.id} style={styles.contactRow}>
-                <View style={styles.contactAvatar}>
-                  <Text style={styles.contactAvatarText}>{c.name.charAt(0).toUpperCase()}</Text>
+                <View style={styles.contactIndexBadge}>
+                  <Text style={styles.contactIndexText}>0{i + 1}</Text>
                 </View>
                 <View style={styles.contactInfo}>
                   <Text style={styles.contactName}>{c.name}</Text>
                   <Text style={styles.contactPhone}>{c.phone}</Text>
                 </View>
                 <View style={styles.contactBadge}>
-                  <Text style={styles.contactBadgeText}>{c.relationship}</Text>
+                  <Text style={styles.contactBadgeText}>{c.relationship.toUpperCase()}</Text>
                 </View>
               </View>
             ))}
@@ -267,206 +305,253 @@ export default function DashboardScreen({ navigation }: Props) {
   );
 }
 
-const PINK = '#e91e8c';
-const PURPLE = '#7c3aed';
-const DARK = '#0d0621';
-const DARK2 = '#1a0a2e';
-const CARD = 'rgba(255,255,255,0.06)';
-const BORDER = 'rgba(255,255,255,0.1)';
+const ACCENT = '#ff2d55';
+const ACCENT_RED = '#ff1744';
+const DARK_BG = '#09080e';
+const SURFACE = '#14121f';
+const BORDER = 'rgba(255, 255, 255, 0.08)';
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: DARK,
+    backgroundColor: DARK_BG,
   },
-  bgTop: {
+  bgGlowTop: {
     position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
+    top: -100,
+    left: '20%',
+    width: 260,
+    height: 260,
+    borderRadius: 130,
+    backgroundColor: 'rgba(255, 45, 85, 0.08)',
+  },
+  bgGlowCenter: {
+    position: 'absolute',
+    top: 220,
+    alignSelf: 'center',
+    width: 300,
     height: 300,
-    backgroundColor: '#1a0a2e',
-    borderBottomLeftRadius: 60,
-    borderBottomRightRadius: 60,
-  },
-  bgBlob1: {
-    position: 'absolute',
-    top: -80,
-    right: -80,
-    width: 250,
-    height: 250,
-    borderRadius: 125,
-    backgroundColor: 'rgba(233,30,140,0.12)',
-  },
-  bgBlob2: {
-    position: 'absolute',
-    top: 100,
-    left: -60,
-    width: 200,
-    height: 200,
-    borderRadius: 100,
-    backgroundColor: 'rgba(124,58,237,0.1)',
+    borderRadius: 150,
+    backgroundColor: 'rgba(121, 40, 202, 0.06)',
   },
   scrollContent: {
-    paddingBottom: 40,
+    paddingBottom: 45,
     paddingHorizontal: 20,
   },
   header: {
     alignItems: 'center',
-    paddingTop: 60,
-    paddingBottom: 20,
+    paddingTop: 55,
+    paddingBottom: 22,
   },
-  logoRow: {
+  brandRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
   },
-  logoIcon: {
-    fontSize: 32,
+  brandPulseDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: ACCENT,
+    shadowColor: ACCENT,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.9,
+    shadowRadius: 6,
+    elevation: 4,
   },
-  logoText: {
-    fontSize: 32,
-    fontWeight: '800',
+  brandTitle: {
+    fontSize: 28,
+    fontWeight: '900',
     color: '#ffffff',
-    letterSpacing: 1,
+    letterSpacing: -0.5,
   },
-  tagline: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.5)',
+  brandAccent: {
+    color: ACCENT,
+  },
+  brandTagline: {
+    fontSize: 10,
+    color: '#8e8a9f',
     marginTop: 6,
-    letterSpacing: 0.5,
+    letterSpacing: 1.6,
+    fontWeight: '700',
   },
   statusRow: {
     flexDirection: 'row',
-    gap: 12,
-    marginBottom: 30,
+    gap: 10,
+    marginBottom: 32,
   },
-  statusCard: {
+  statusPill: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    borderRadius: 14,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 10,
     borderWidth: 1,
+    gap: 8,
   },
-  statusGood: {
-    backgroundColor: 'rgba(16,185,129,0.12)',
-    borderColor: 'rgba(16,185,129,0.3)',
+  pillSuccess: {
+    backgroundColor: 'rgba(16, 185, 129, 0.08)',
+    borderColor: 'rgba(16, 185, 129, 0.25)',
   },
-  statusWarn: {
-    backgroundColor: 'rgba(245,158,11,0.12)',
-    borderColor: 'rgba(245,158,11,0.3)',
+  pillWarn: {
+    backgroundColor: 'rgba(245, 158, 11, 0.08)',
+    borderColor: 'rgba(245, 158, 11, 0.25)',
   },
-  statusAlert: {
-    backgroundColor: 'rgba(233,30,140,0.12)',
-    borderColor: 'rgba(233,30,140,0.3)',
+  pillAlert: {
+    backgroundColor: 'rgba(255, 45, 85, 0.1)',
+    borderColor: 'rgba(255, 45, 85, 0.3)',
   },
-  statusNeutral: {
-    backgroundColor: CARD,
+  pillIdle: {
+    backgroundColor: SURFACE,
     borderColor: BORDER,
   },
-  statusIcon: {
-    fontSize: 16,
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
   },
-  statusLabel: {
-    flex: 1,
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.8)',
-    fontWeight: '600',
+  dotGreen: {
+    backgroundColor: '#10b981',
+  },
+  dotAmber: {
+    backgroundColor: '#f59e0b',
+  },
+  dotRed: {
+    backgroundColor: ACCENT,
+  },
+  dotMuted: {
+    backgroundColor: '#8e8a9f',
+  },
+  statusPillText: {
+    fontSize: 10,
+    color: '#ffffff',
+    fontWeight: '800',
+    letterSpacing: 0.6,
   },
   sosSection: {
     alignItems: 'center',
-    marginBottom: 40,
+    marginBottom: 36,
   },
   sosHintText: {
-    color: 'rgba(255,255,255,0.4)',
-    fontSize: 13,
-    marginBottom: 30,
-    letterSpacing: 0.3,
+    color: '#8e8a9f',
+    fontSize: 11,
+    marginBottom: 28,
+    letterSpacing: 1.5,
+    fontWeight: '700',
   },
   sosGlowRing: {
-    width: 240,
-    height: 240,
-    borderRadius: 120,
-    backgroundColor: 'rgba(233,30,140,0.08)',
+    width: 250,
+    height: 250,
+    borderRadius: 125,
+    backgroundColor: 'rgba(255, 45, 85, 0.08)',
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: ACCENT,
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 1,
+    shadowOpacity: 0.8,
     shadowRadius: 40,
     elevation: 20,
   },
   sosMidRing: {
-    width: 210,
-    height: 210,
-    borderRadius: 105,
-    backgroundColor: 'rgba(233,30,140,0.12)',
+    width: 216,
+    height: 216,
+    borderRadius: 108,
+    backgroundColor: 'rgba(255, 45, 85, 0.12)',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: 'rgba(233,30,140,0.25)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 45, 85, 0.35)',
   },
   sosButton: {
     width: 180,
     height: 180,
     borderRadius: 90,
-    backgroundColor: PINK,
+    backgroundColor: ACCENT_RED,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: PINK,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
-    shadowRadius: 30,
-    elevation: 15,
+    shadowColor: ACCENT_RED,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.85,
+    shadowRadius: 28,
+    elevation: 16,
   },
-  sosButtonIcon: {
-    fontSize: 40,
-    marginBottom: 4,
+  sosButtonInner: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   sosButtonText: {
     color: '#ffffff',
-    fontSize: 28,
+    fontSize: 38,
     fontWeight: '900',
-    letterSpacing: 4,
+    letterSpacing: 3,
+  },
+  sosDivider: {
+    width: 28,
+    height: 2,
+    backgroundColor: 'rgba(255, 255, 255, 0.6)',
+    marginVertical: 4,
   },
   sosButtonSub: {
-    color: 'rgba(255,255,255,0.75)',
-    fontSize: 11,
+    color: 'rgba(255, 255, 255, 0.9)',
+    fontSize: 10,
     letterSpacing: 3,
-    fontWeight: '600',
-    marginTop: 2,
+    fontWeight: '800',
   },
   sosDescription: {
     textAlign: 'center',
-    color: 'rgba(255,255,255,0.4)',
-    fontSize: 13,
+    color: '#8e8a9f',
+    fontSize: 12,
     marginTop: 24,
-    lineHeight: 20,
-    paddingHorizontal: 20,
+    lineHeight: 18,
+    paddingHorizontal: 25,
+    letterSpacing: 0.2,
   },
   actionGrid: {
     flexDirection: 'row',
     gap: 12,
-    marginBottom: 20,
+    marginBottom: 16,
   },
   actionCard: {
     flex: 1,
-    backgroundColor: CARD,
-    borderRadius: 18,
-    padding: 18,
+    backgroundColor: SURFACE,
+    borderRadius: 16,
+    padding: 16,
     borderWidth: 1,
     borderColor: BORDER,
-    alignItems: 'flex-start',
   },
   actionCardAlert: {
-    backgroundColor: 'rgba(233,30,140,0.1)',
-    borderColor: 'rgba(233,30,140,0.25)',
+    backgroundColor: 'rgba(255, 45, 85, 0.08)',
+    borderColor: 'rgba(255, 45, 85, 0.3)',
   },
-  actionCardIcon: {
-    fontSize: 28,
-    marginBottom: 10,
+  actionCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+  actionBadge: {
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  actionBadgeAlert: {
+    backgroundColor: ACCENT,
+  },
+  actionBadgeText: {
+    color: '#ffffff',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  actionBadgeTextAlert: {
+    color: '#ffffff',
+  },
+  actionCardArrow: {
+    color: '#8e8a9f',
+    fontSize: 16,
+    fontWeight: '700',
   },
   actionCardTitle: {
     color: '#ffffff',
@@ -475,129 +560,154 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   actionCardSub: {
-    color: 'rgba(255,255,255,0.45)',
-    fontSize: 12,
+    color: '#8e8a9f',
+    fontSize: 11,
+    lineHeight: 15,
   },
   widgetCard: {
-    backgroundColor: 'rgba(233,30,140,0.12)',
+    backgroundColor: SURFACE,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(233,30,140,0.3)',
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    marginBottom: 12,
+    borderColor: BORDER,
+    padding: 16,
+    marginBottom: 16,
   },
   widgetCardHeader: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: 10,
   },
-  widgetCardIcon: {
-    fontSize: 24,
-    marginRight: 12,
+  widgetTag: {
+    backgroundColor: 'rgba(255, 45, 85, 0.15)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 45, 85, 0.3)',
   },
-  widgetCardTextWrap: {
-    flex: 1,
+  widgetTagText: {
+    color: ACCENT,
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.8,
   },
   widgetCardTitle: {
     color: '#ffffff',
     fontSize: 14,
     fontWeight: '700',
-    marginBottom: 2,
+    marginBottom: 3,
   },
   widgetCardSub: {
-    color: 'rgba(255,255,255,0.6)',
+    color: '#8e8a9f',
     fontSize: 12,
-    lineHeight: 16,
+    lineHeight: 17,
   },
   widgetCardArrow: {
-    color: 'rgba(255,255,255,0.4)',
-    fontSize: 22,
-    fontWeight: '600',
-    marginLeft: 8,
+    color: '#8e8a9f',
+    fontSize: 16,
+    fontWeight: '700',
   },
   directSmsBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(16,185,129,0.12)',
+    backgroundColor: 'rgba(16, 185, 129, 0.06)',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(16,185,129,0.3)',
+    borderColor: 'rgba(16, 185, 129, 0.2)',
     paddingVertical: 10,
     paddingHorizontal: 14,
     marginBottom: 20,
+    gap: 10,
   },
-  directSmsIcon: {
-    fontSize: 16,
-    marginRight: 8,
+  bannerDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#10b981',
   },
   directSmsText: {
     flex: 1,
-    color: 'rgba(255,255,255,0.75)',
+    color: 'rgba(255, 255, 255, 0.7)',
     fontSize: 11,
     lineHeight: 16,
   },
   boldText: {
-    fontWeight: '700',
+    fontWeight: '800',
     color: '#10b981',
+    letterSpacing: 0.4,
   },
   contactPreview: {
-    backgroundColor: CARD,
-    borderRadius: 18,
+    backgroundColor: SURFACE,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: BORDER,
-    padding: 18,
+    padding: 16,
+  },
+  previewHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
   },
   sectionTitle: {
-    color: '#ffffff',
-    fontSize: 16,
+    color: '#8e8a9f',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 1.2,
+  },
+  editLink: {
+    color: ACCENT,
+    fontSize: 11,
     fontWeight: '700',
-    marginBottom: 16,
+    letterSpacing: 0.4,
   },
   contactRow: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.06)',
+    borderBottomColor: 'rgba(255, 255, 255, 0.05)',
   },
-  contactAvatar: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: PINK,
+  contactIndexBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
   },
-  contactAvatarText: {
+  contactIndexText: {
     color: '#ffffff',
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 12,
+    fontWeight: '800',
   },
   contactInfo: {
     flex: 1,
   },
   contactName: {
     color: '#ffffff',
-    fontSize: 15,
-    fontWeight: '600',
+    fontSize: 14,
+    fontWeight: '700',
   },
   contactPhone: {
-    color: 'rgba(255,255,255,0.45)',
-    fontSize: 13,
+    color: '#8e8a9f',
+    fontSize: 12,
     marginTop: 2,
   },
   contactBadge: {
-    backgroundColor: 'rgba(233,30,140,0.15)',
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    backgroundColor: 'rgba(255, 45, 85, 0.1)',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
     borderWidth: 1,
-    borderColor: 'rgba(233,30,140,0.3)',
+    borderColor: 'rgba(255, 45, 85, 0.25)',
   },
   contactBadgeText: {
-    color: PINK,
-    fontSize: 11,
-    fontWeight: '600',
+    color: ACCENT,
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.5,
   },
 });
