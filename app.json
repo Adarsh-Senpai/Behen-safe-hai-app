@@ -17,7 +17,8 @@
         "UIBackgroundModes": [
           "location",
           "fetch"
-        ]
+        ],
+        "NSContactsUsageDescription": "SafeHer needs access to your contacts so you can select your trusted emergency contacts directly from your contact book."
       }
     },
     "android": {
@@ -33,15 +34,11 @@
         "FOREGROUND_SERVICE",
         "FOREGROUND_SERVICE_LOCATION",
         "SEND_SMS",
+        "READ_CONTACTS",
         "RECEIVE_BOOT_COMPLETED",
         "VIBRATE",
         "WAKE_LOCK",
-        "POST_NOTIFICATIONS",
-        "android.permission.ACCESS_COARSE_LOCATION",
-        "android.permission.ACCESS_FINE_LOCATION",
-        "android.permission.ACCESS_BACKGROUND_LOCATION",
-        "android.permission.FOREGROUND_SERVICE",
-        "android.permission.FOREGROUND_SERVICE_LOCATION"
+        "POST_NOTIFICATIONS"
       ]
     },
     "web": {

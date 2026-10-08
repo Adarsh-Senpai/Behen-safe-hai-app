@@ -34,6 +34,26 @@ jest.mock('expo-battery', () => ({
   getBatteryLevelAsync: jest.fn().mockResolvedValue(0.85),
 }));
 
+jest.mock('expo-contacts', () => ({
+  requestPermissionsAsync: jest.fn().mockResolvedValue({ status: 'granted' }),
+  getPermissionsAsync: jest.fn().mockResolvedValue({ status: 'granted' }),
+  Contact: {
+    presentPicker: jest.fn().mockResolvedValue({
+      id: 'test-1',
+      name: 'Alice Johnson',
+      getFullName: jest.fn().mockResolvedValue('Alice Johnson'),
+      getPhones: jest.fn().mockResolvedValue([
+        { id: 'p1', number: '+14155552671', label: 'mobile' },
+      ]),
+    }),
+  },
+  presentContactPickerAsync: jest.fn().mockResolvedValue({
+    id: 'test-1',
+    name: 'Alice Johnson',
+    phoneNumbers: [{ number: '+14155552671', label: 'mobile' }],
+  }),
+}));
+
 jest.mock('expo-secure-store', () => {
   let store = {};
   return {

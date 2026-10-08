@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import * as Haptics from 'expo-haptics';
+import * as Contacts from 'expo-contacts';
 import { RootStackParamList, EmergencyContact } from '../types';
 import { useContacts } from '../hooks/useContacts';
 import { validatePhoneNumber, normalizePhone } from '../services/sms/smsService';
@@ -67,6 +68,146 @@ export default function EmergencyContactsScreen({ navigation }: Props) {
       }
       return copy;
     });
+  };
+
+  const inferRelationship = (name: string): string | null => {
+    const lower = name.toLowerCase();
+    if (
+      lower.includes('mom') ||
+      lower.includes('mother') ||
+      lower.includes('dad') ||
+      lower.includes('father') ||
+      lower.includes('papa') ||
+      lower.includes('maa')
+    ) {
+      return 'Parent';
+    }
+    if (
+      lower.includes('bro') ||
+      lower.includes('brother') ||
+      lower.includes('sis') ||
+      lower.includes('sister')
+    ) {
+      return 'Sibling';
+    }
+    if (
+      lower.includes('husband') ||
+      lower.includes('wife') ||
+      lower.includes('partner') ||
+      lower.includes('spouse')
+    ) {
+      return 'Partner';
+    }
+    if (lower.includes('friend') || lower.includes('bff')) {
+      return 'Friend';
+    }
+    return null;
+  };
+
+  const handlePickFromBook = async (index: number) => {
+    try {
+      const { status } = await Contacts.requestPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(
+          'Permission Required',
+          'Access to contacts is required so you can select your emergency contacts directly from your address book. Please enable contact permissions in your device settings.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+
+      let selectedName = '';
+      let selectedPhone = '';
+
+      // Try modern Contact.presentPicker() first (Expo SDK 52/53 standard)
+      if (Contacts.Contact && typeof Contacts.Contact.presentPicker === 'function') {
+        const picked = await Contacts.Contact.presentPicker();
+        if (!picked) {
+          return; // User cancelled
+        }
+
+        if (typeof picked.getFullName === 'function') {
+          selectedName = (await picked.getFullName()) || '';
+        } else if ((picked as any).name) {
+          selectedName = (picked as any).name;
+        }
+
+        if (typeof picked.getPhones === 'function') {
+          const phones = await picked.getPhones();
+          if (phones && phones.length > 0) {
+            const preferred =
+              phones.find(
+                (p) =>
+                  p.label?.toLowerCase().includes('mob') ||
+                  p.label?.toLowerCase().includes('cell') ||
+                  (p as any).isPrimary
+              ) || phones[0];
+            selectedPhone = preferred.number || '';
+          }
+        }
+      } else if (typeof (Contacts as any).presentContactPickerAsync === 'function') {
+        // Fallback for legacy environments
+        const picked = await (Contacts as any).presentContactPickerAsync();
+        if (!picked) return;
+        selectedName =
+          picked.name || `${picked.firstName || ''} ${picked.lastName || ''}`.trim();
+        if (picked.phoneNumbers && picked.phoneNumbers.length > 0) {
+          const preferred =
+            picked.phoneNumbers.find(
+              (p: any) =>
+                p.label?.toLowerCase().includes('mob') ||
+                p.label?.toLowerCase().includes('cell') ||
+                p.isPrimary
+            ) || picked.phoneNumbers[0];
+          selectedPhone = preferred.number || '';
+        }
+      }
+
+      if (!selectedName && !selectedPhone) {
+        return;
+      }
+
+      const inferredRel = selectedName ? inferRelationship(selectedName) : null;
+
+      // Populate form
+      setForms((prev) => {
+        const updated = [...prev];
+        updated[index] = {
+          ...updated[index],
+          name: selectedName || updated[index].name,
+          phone: selectedPhone || updated[index].phone,
+          relationship: inferredRel || updated[index].relationship,
+        };
+        return updated;
+      });
+
+      // Clear field errors
+      setErrors((prev) => {
+        const copy = { ...prev };
+        if (copy[index]) {
+          if (selectedName) delete copy[index].name;
+          if (selectedPhone) delete copy[index].phone;
+        }
+        return copy;
+      });
+
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+
+      if (!selectedPhone) {
+        Alert.alert(
+          'No Phone Number Found',
+          `"${selectedName || 'The contact'}" was selected, but does not have a saved phone number in your address book. Please enter their mobile number manually.`,
+          [{ text: 'OK' }]
+        );
+      }
+    } catch (err: any) {
+      console.warn('[Contacts] Error picking contact:', err);
+      Alert.alert(
+        'Could Not Pick Contact',
+        err?.message ||
+          'An error occurred while opening the contact book. Please enter the details manually.'
+      );
+    }
   };
 
   const validateAll = (): boolean => {
@@ -175,7 +316,7 @@ export default function EmergencyContactsScreen({ navigation }: Props) {
         <View style={styles.infoBox}>
           <Text style={styles.infoBoxIcon}>ℹ️</Text>
           <Text style={styles.infoBoxText}>
-            When SOS is triggered, your GPS location will automatically be dispatched to these 3 contacts via SMS. Data is stored 100% offline on your device.
+            When SOS is triggered, your GPS location will automatically be dispatched to these 3 contacts via SMS. Tap "Pick from Phone" on any card to select directly from your address book, or type manually.
           </Text>
         </View>
 
@@ -185,10 +326,21 @@ export default function EmergencyContactsScreen({ navigation }: Props) {
           return (
             <View key={item.id} style={styles.card}>
               <View style={styles.cardHeader}>
-                <View style={styles.badgeIndex}>
-                  <Text style={styles.badgeIndexText}>#{index + 1}</Text>
+                <View style={styles.cardHeaderLeft}>
+                  <View style={styles.badgeIndex}>
+                    <Text style={styles.badgeIndexText}>#{index + 1}</Text>
+                  </View>
+                  <Text style={styles.cardTitle}>Contact {index + 1}</Text>
                 </View>
-                <Text style={styles.cardTitle}>Contact {index + 1}</Text>
+                <TouchableOpacity
+                  style={styles.pickButton}
+                  onPress={() => handlePickFromBook(index)}
+                  activeOpacity={0.7}
+                  accessibilityLabel={`Pick Contact ${index + 1} from phone book`}
+                >
+                  <Text style={styles.pickButtonIcon}>📖</Text>
+                  <Text style={styles.pickButtonText}>Pick from Phone</Text>
+                </TouchableOpacity>
               </View>
 
               {/* Name field */}
@@ -355,7 +507,12 @@ const styles = StyleSheet.create({
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: 14,
+  },
+  cardHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   badgeIndex: {
     backgroundColor: PINK,
@@ -373,6 +530,26 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 16,
     fontWeight: '700',
+  },
+  pickButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(233, 30, 140, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(233, 30, 140, 0.45)',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 12,
+  },
+  pickButtonIcon: {
+    fontSize: 13,
+    marginRight: 5,
+  },
+  pickButtonText: {
+    color: '#ff4081',
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.2,
   },
   fieldGroup: {
     marginBottom: 14,

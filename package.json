@@ -8,6 +8,7 @@
     "expo": "~57.0.27",
     "expo-android-sms-sender": "^1.0.2",
     "expo-battery": "^57.0.3",
+    "expo-contacts": "~57.0.6",
     "expo-haptics": "^57.0.3",
     "expo-location": "^57.0.20",
     "expo-quick-actions": "^6.0.2",
