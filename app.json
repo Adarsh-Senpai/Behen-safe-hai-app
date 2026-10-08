@@ -1,25 +1,71 @@
 {
   "expo": {
-    "name": "RP",
-    "slug": "RP",
+    "name": "SafeHer",
+    "slug": "safeher",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "dark",
+    "scheme": "womensafety",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": false,
+      "bundleIdentifier": "com.safeher.app",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "SafeHer needs your location to send emergency alerts to your trusted contacts.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "SafeHer needs background location access to continuously track your location during emergencies.",
+        "NSLocationAlwaysUsageDescription": "SafeHer needs background location access to continuously track your location during emergencies.",
+        "UIBackgroundModes": [
+          "location",
+          "fetch"
+        ]
+      }
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
+        "backgroundColor": "#1a0a2e"
       },
-      "predictiveBackGestureEnabled": false
+      "package": "com.safeher.app",
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
+        "FOREGROUND_SERVICE",
+        "FOREGROUND_SERVICE_LOCATION",
+        "SEND_SMS",
+        "RECEIVE_BOOT_COMPLETED",
+        "VIBRATE",
+        "WAKE_LOCK",
+        "POST_NOTIFICATIONS",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_BACKGROUND_LOCATION",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_LOCATION"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "SafeHer needs location access to send your GPS coordinates to emergency contacts.",
+          "locationAlwaysPermission": "SafeHer needs background location access during emergencies.",
+          "locationWhenInUsePermission": "SafeHer needs location access to send emergency alerts.",
+          "isAndroidBackgroundLocationEnabled": true,
+          "isAndroidForegroundServiceEnabled": true
+        }
+      ],
+      "expo-quick-actions",
+      "expo-secure-store",
+      "./plugins/withSosWidget"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "c7e94570-3353-4399-aad1-59e39ec74ec0"
+      }
     }
   }
 }
