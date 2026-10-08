@@ -8,6 +8,7 @@ import {
   StatusBar,
   ScrollView,
   Alert,
+  Image,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types';
@@ -115,7 +116,11 @@ export default function DashboardScreen({ navigation }: Props) {
         {/* Modern Minimal Header */}
         <View style={styles.header}>
           <View style={styles.brandRow}>
-            <View style={styles.brandPulseDot} />
+            <Image
+              source={require('../../assets/icon.png')}
+              style={styles.brandLogo}
+              resizeMode="contain"
+            />
             <Text style={styles.brandTitle}>
               BehenSafeHai<Text style={styles.brandAccent}>?</Text>
             </Text>
@@ -346,18 +351,12 @@ const styles = StyleSheet.create({
   brandRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 10,
   },
-  brandPulseDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: ACCENT,
-    shadowColor: ACCENT,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.9,
-    shadowRadius: 6,
-    elevation: 4,
+  brandLogo: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
   },
   brandTitle: {
     fontSize: 28,
