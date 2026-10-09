@@ -164,3 +164,21 @@ jest.mock('expo-audio', () => {
   };
 });
 
+const mockFileSystemUpload = {
+  uploadAsync: jest.fn().mockResolvedValue({
+    status: 200,
+    body: JSON.stringify({
+      status: 'success',
+      data: { url: 'https://tmpfiles.org/837261/emergency_audio.m4a' },
+    }),
+  }),
+  FileSystemUploadType: {
+    BINARY_CONTENT: 0,
+    MULTIPART: 1,
+  },
+};
+
+jest.mock('expo-file-system', () => mockFileSystemUpload);
+jest.mock('expo-file-system/legacy', () => mockFileSystemUpload);
+
+
