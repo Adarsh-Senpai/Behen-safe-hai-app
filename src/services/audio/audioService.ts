@@ -150,70 +150,53 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
 }
 
 /**
- * Uploads emergency audio to free cloud hosting and returns the direct playable streaming link.
- * Uses native FileSystem.uploadAsync (bypasses React Native JS FormData to avoid Unsupported FormDataPart implementation).
- * Primary host: uguu.se (dedicated open-source file host, serves direct audio/x-m4a stream with HTTP 206 Range support)
+ * Uploads emergency audio to Supabase Storage and returns the direct playable streaming link.
+ * Uses native FileSystem.uploadAsync with BINARY_CONTENT to bypass React Native JS FormData issues.
  */
 export async function uploadEmergencyAudio(localUri: string): Promise<string | null> {
   if (!localUri) return null;
 
-  // Normalize URI for native FileSystem upload
-  const uploadUri = localUri.startsWith('file://') ? localUri : `file://${localUri}`;
+  const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
 
-  // 1. Primary Host: uguu.se (serves raw direct audio link, playable directly on Android Chrome and iOS Safari)
-  try {
-    console.log('[Audio Upload] Attempting upload to uguu.se...');
-    const uploadTask = FileSystem.uploadAsync('https://uguu.se/upload', uploadUri, {
-      fieldName: 'files[]',
-      httpMethod: 'POST',
-      uploadType: FileSystem.FileSystemUploadType.MULTIPART,
-      mimeType: 'audio/m4a',
-      headers: {
-        Accept: 'application/json',
-      },
-    });
-
-    const response = await withTimeout(uploadTask, 9000);
-
-    if (response.status >= 200 && response.status < 300) {
-      const json = JSON.parse(response.body);
-      if (json?.success && json?.files && json.files[0]?.url) {
-        const directUrl: string = json.files[0].url;
-        console.log('[Audio Upload] Direct playable URL generated (uguu.se):', directUrl);
-        return directUrl;
-      }
-    }
-    console.warn('[Audio Upload] Primary host uguu.se returned non-200 status:', response.status, response.body);
-  } catch (err) {
-    console.warn('[Audio Upload] Primary host uguu.se failed:', err);
+  if (!supabaseUrl || !supabaseAnonKey) {
+    console.error('[Audio Upload] Missing Supabase URL or Anon Key. Cannot upload audio.');
+    return null;
   }
 
-  // 2. Fallback: Retry uguu.se once in case of temporary network hiccup
+  // Normalize URI for native FileSystem upload
+  const uploadUri = localUri.startsWith('file://') ? localUri : `file://${localUri}`;
+  const fileName = `emergency_${Date.now()}.m4a`;
+  const bucketName = 'emergency-audio';
+  
+  // Supabase Storage REST endpoint for file upload
+  const uploadEndpoint = `${supabaseUrl}/storage/v1/object/${bucketName}/${fileName}`;
+
   try {
-    console.log('[Audio Upload] Retrying uguu.se...');
-    const retryTask = FileSystem.uploadAsync('https://uguu.se/upload', uploadUri, {
-      fieldName: 'files[]',
+    console.log('[Audio Upload] Attempting upload to Supabase Storage...');
+    const uploadTask = FileSystem.uploadAsync(uploadEndpoint, uploadUri, {
       httpMethod: 'POST',
-      uploadType: FileSystem.FileSystemUploadType.MULTIPART,
-      mimeType: 'audio/m4a',
+      uploadType: FileSystem.FileSystemUploadType.BINARY_CONTENT,
       headers: {
-        Accept: 'application/json',
+        Authorization: `Bearer ${supabaseAnonKey}`,
+        apikey: supabaseAnonKey,
+        'Content-Type': 'audio/m4a',
       },
     });
 
-    const retryResp = await withTimeout(retryTask, 9000);
+    const response = await withTimeout(uploadTask, 15000);
 
-    if (retryResp.status >= 200 && retryResp.status < 300) {
-      const json = JSON.parse(retryResp.body);
-      if (json?.success && json?.files && json.files[0]?.url) {
-        const directUrl: string = json.files[0].url;
-        console.log('[Audio Upload] Direct playable URL generated on retry (uguu.se):', directUrl);
-        return directUrl;
-      }
+    if (response.status >= 200 && response.status < 300) {
+      console.log('[Audio Upload] Successfully uploaded to Supabase Storage.');
+      // Construct the public URL for the uploaded file
+      const publicUrl = `${supabaseUrl}/storage/v1/object/public/${bucketName}/${fileName}`;
+      console.log('[Audio Upload] Direct playable URL generated (Supabase):', publicUrl);
+      return publicUrl;
     }
-    console.warn('[Audio Upload] Retry returned non-200 status:', retryResp.status, retryResp.body);
-  } catch (retryErr) {
-    console.warn('[Audio Upload] Retry uguu.se failed:', retryErr);
+    
+    console.warn('[Audio Upload] Supabase upload returned non-200 status:', response.status, response.body);
+  } catch (err) {
+    console.warn('[Audio Upload] Supabase upload failed:', err);
   }
 
   return null;

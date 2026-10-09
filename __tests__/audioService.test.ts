@@ -47,54 +47,64 @@ describe('Audio Service', () => {
   });
 
   describe('Upload', () => {
-    it('uploads audio via native FileSystem directly to uguu.se and returns playable stream URL', async () => {
+    const ORIGINAL_ENV = process.env;
+
+    beforeEach(() => {
+      jest.resetModules();
+      process.env = { ...ORIGINAL_ENV };
+      process.env.EXPO_PUBLIC_SUPABASE_URL = 'https://test-project.supabase.co';
+      process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY = 'test-anon-key';
+    });
+
+    afterAll(() => {
+      process.env = ORIGINAL_ENV;
+    });
+
+    it('returns null if Supabase environment variables are missing', async () => {
+      delete process.env.EXPO_PUBLIC_SUPABASE_URL;
+      const directUrl = await uploadEmergencyAudio('file:///test.m4a');
+      expect(directUrl).toBeNull();
+      expect(FileSystem.uploadAsync).not.toHaveBeenCalled();
+    });
+
+    it('uploads audio via native FileSystem directly to Supabase REST API and returns public URL', async () => {
+      // Mock Date.now to ensure predictable URL in assertion
+      const mockDateNow = jest.spyOn(Date, 'now').mockReturnValue(1234567890);
+
       (FileSystem.uploadAsync as jest.Mock).mockResolvedValueOnce({
         status: 200,
-        body: JSON.stringify({
-          success: true,
-          files: [{ url: 'https://h.uguu.se/tceXtymK.m4a' }],
-        }),
+        body: '', // Supabase might return an empty body or JSON for storage upload
       });
 
       const directUrl = await uploadEmergencyAudio('file:///test.m4a');
-      expect(directUrl).toBe('https://h.uguu.se/tceXtymK.m4a');
+      expect(directUrl).toBe('https://test-project.supabase.co/storage/v1/object/public/emergency-audio/emergency_1234567890.m4a');
       expect(FileSystem.uploadAsync).toHaveBeenCalledWith(
-        'https://uguu.se/upload',
+        'https://test-project.supabase.co/storage/v1/object/emergency-audio/emergency_1234567890.m4a',
         'file:///test.m4a',
         expect.objectContaining({
           httpMethod: 'POST',
-          fieldName: 'files[]',
-          uploadType: FileSystem.FileSystemUploadType.MULTIPART,
+          uploadType: FileSystem.FileSystemUploadType.BINARY_CONTENT,
+          headers: {
+            Authorization: 'Bearer test-anon-key',
+            apikey: 'test-anon-key',
+            'Content-Type': 'audio/m4a',
+          },
         }),
       );
+
+      mockDateNow.mockRestore();
     });
 
-    it('retries upload if first attempt fails and succeeds on retry', async () => {
-      (FileSystem.uploadAsync as jest.Mock)
-        .mockRejectedValueOnce(new Error('Transient network glitch'))
-        .mockResolvedValueOnce({
-          status: 200,
-          body: JSON.stringify({
-            success: true,
-            files: [{ url: 'https://d.uguu.se/retry_success.m4a' }],
-          }),
-        });
-
-      const directUrl = await uploadEmergencyAudio('file:///test.m4a');
-      expect(directUrl).toBe('https://d.uguu.se/retry_success.m4a');
-      expect(FileSystem.uploadAsync).toHaveBeenCalledTimes(2);
-    });
-
-    it('returns null gracefully on upload error or network failure across all attempts', async () => {
+    it('returns null gracefully on upload error or network failure', async () => {
       (FileSystem.uploadAsync as jest.Mock).mockRejectedValue(new Error('Network offline'));
       const directUrl = await uploadEmergencyAudio('file:///test.m4a');
       expect(directUrl).toBeNull();
     });
 
-    it('returns null if server responds with non-ok status', async () => {
+    it('returns null if Supabase server responds with non-ok status', async () => {
       (FileSystem.uploadAsync as jest.Mock).mockResolvedValue({
-        status: 500,
-        body: 'Internal Server Error',
+        status: 403,
+        body: '{"statusCode":"403","error":"Forbidden","message":"Bucket not found or not public"}',
       });
       const directUrl = await uploadEmergencyAudio('file:///test.m4a');
       expect(directUrl).toBeNull();
