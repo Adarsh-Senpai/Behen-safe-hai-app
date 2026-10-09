@@ -131,29 +131,36 @@ jest.mock('react-native', () => ({
   KeyboardAvoidingView: 'KeyboardAvoidingView',
 }));
 
-jest.mock('expo-av', () => {
-  const mockRecordingInstance = {
+jest.mock('expo-audio', () => {
+  const mockRecorder = {
+    id: 'test-recorder',
+    isRecording: false,
+    uri: 'file:///test-emergency-audio.m4a',
+    currentTime: 10,
     prepareToRecordAsync: jest.fn().mockResolvedValue(undefined),
-    startAsync: jest.fn().mockResolvedValue(undefined),
-    stopAndUnloadAsync: jest.fn().mockResolvedValue(undefined),
-    getURI: jest.fn().mockReturnValue('file:///test-emergency-audio.m4a'),
-    getStatusAsync: jest.fn().mockResolvedValue({ isRecording: true, durationMillis: 10000 }),
+    record: jest.fn().mockImplementation(() => {
+      mockRecorder.isRecording = true;
+    }),
+    stop: jest.fn().mockImplementation(async () => {
+      mockRecorder.isRecording = false;
+    }),
+    getStatus: jest.fn().mockReturnValue({ isRecording: true, durationMillis: 10000 }),
+    addListener: jest.fn().mockReturnValue({ remove: jest.fn() }),
   };
 
   return {
-    Audio: {
-      requestPermissionsAsync: jest.fn().mockResolvedValue({ status: 'granted', granted: true }),
-      getPermissionsAsync: jest.fn().mockResolvedValue({ status: 'granted', granted: true }),
-      setAudioModeAsync: jest.fn().mockResolvedValue(undefined),
-      Recording: jest.fn().mockImplementation(() => mockRecordingInstance),
-      RecordingOptionsPresets: {
-        LOW_QUALITY: {
-          android: { extension: '.m4a', outputFormat: 2, audioEncoder: 3, sampleRate: 16000, numberOfChannels: 1, bitRate: 32000 },
-          ios: { extension: '.m4a', audioQuality: 0x00, sampleRate: 16000, numberOfChannels: 1, bitRate: 32000, linearPCMBitDepth: 16, linearPCMIsBigEndian: false, linearPCMIsFloat: false },
-          web: {},
-        },
-        HIGH_QUALITY: {},
-      },
+    AudioModule: {
+      AudioRecorder: jest.fn().mockImplementation(() => mockRecorder),
+      requestRecordingPermissionsAsync: jest.fn().mockResolvedValue({ status: 'granted', granted: true }),
+      getRecordingPermissionsAsync: jest.fn().mockResolvedValue({ status: 'granted', granted: true }),
+    },
+    requestRecordingPermissionsAsync: jest.fn().mockResolvedValue({ status: 'granted', granted: true }),
+    getRecordingPermissionsAsync: jest.fn().mockResolvedValue({ status: 'granted', granted: true }),
+    setAudioModeAsync: jest.fn().mockResolvedValue(undefined),
+    RecordingPresets: {
+      LOW_QUALITY: { extension: '.m4a', sampleRate: 16000, bitRate: 32000 },
+      HIGH_QUALITY: { extension: '.m4a', sampleRate: 44100, bitRate: 128000 },
     },
   };
 });
+

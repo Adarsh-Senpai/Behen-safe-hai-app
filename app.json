@@ -59,7 +59,8 @@
       ],
       "expo-quick-actions",
       "expo-secure-store",
-      "./plugins/withSosWidget"
+      "./plugins/withSosWidget",
+      "expo-audio"
     ],
     "extra": {
       "eas": {

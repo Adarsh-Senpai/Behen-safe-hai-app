@@ -1,16 +1,29 @@
-import { Audio } from 'expo-av';
-import { Platform } from 'react-native';
+import {
+  AudioModule,
+  RecordingPresets,
+  setAudioModeAsync,
+  requestRecordingPermissionsAsync,
+  getRecordingPermissionsAsync,
+} from 'expo-audio';
+import type { AudioRecorder } from 'expo-audio';
 
-let currentRecording: Audio.Recording | null = null;
+let currentRecorder: AudioRecorder | null = null;
 let recordingStartTime: number | null = null;
 
 /**
- * Request microphone permissions for emergency audio capture.
+ * Request microphone permissions for emergency audio capture using expo-audio.
  */
 export async function requestAudioPermissions(): Promise<boolean> {
   try {
-    const { status, granted } = await Audio.requestPermissionsAsync();
-    return granted || status === 'granted';
+    if (typeof requestRecordingPermissionsAsync === 'function') {
+      const res = await requestRecordingPermissionsAsync();
+      return res.granted || res.status === 'granted';
+    }
+    if (AudioModule && typeof AudioModule.requestRecordingPermissionsAsync === 'function') {
+      const res = await AudioModule.requestRecordingPermissionsAsync();
+      return res.granted || res.status === 'granted';
+    }
+    return false;
   } catch (err) {
     console.warn('[Audio] Permission request failed:', err);
     return false;
@@ -22,8 +35,15 @@ export async function requestAudioPermissions(): Promise<boolean> {
  */
 export async function hasAudioPermission(): Promise<boolean> {
   try {
-    const { status, granted } = await Audio.getPermissionsAsync();
-    return granted || status === 'granted';
+    if (typeof getRecordingPermissionsAsync === 'function') {
+      const res = await getRecordingPermissionsAsync();
+      return res.granted || res.status === 'granted';
+    }
+    if (AudioModule && typeof AudioModule.getRecordingPermissionsAsync === 'function') {
+      const res = await AudioModule.getRecordingPermissionsAsync();
+      return res.granted || res.status === 'granted';
+    }
+    return false;
   } catch {
     return false;
   }
@@ -36,7 +56,7 @@ export async function hasAudioPermission(): Promise<boolean> {
 export async function startEmergencyRecording(): Promise<boolean> {
   try {
     // If already recording, stop the previous one first
-    if (currentRecording) {
+    if (currentRecorder) {
       await stopEmergencyRecording();
     }
 
@@ -46,26 +66,31 @@ export async function startEmergencyRecording(): Promise<boolean> {
       return false;
     }
 
-    // Configure audio mode for background recording
-    await Audio.setAudioModeAsync({
-      allowsRecordingIOS: true,
-      playsInSilentModeIOS: true,
-      staysActiveInBackground: true,
-      shouldDuckAndroid: true,
-      playThroughEarpieceAndroid: false,
-    });
+    try {
+      await setAudioModeAsync({
+        playsInSilentMode: true,
+        allowsRecording: true,
+      });
+    } catch (modeErr) {
+      console.warn('[Audio] setAudioModeAsync warning:', modeErr);
+    }
 
-    const recording = new Audio.Recording();
-    await recording.prepareToRecordAsync(Audio.RecordingOptionsPresets.LOW_QUALITY);
-    await recording.startAsync();
+    if (!AudioModule || !AudioModule.AudioRecorder) {
+      console.warn('[Audio] AudioRecorder module not available on this platform');
+      return false;
+    }
 
-    currentRecording = recording;
+    const recorder = new AudioModule.AudioRecorder(RecordingPresets.LOW_QUALITY);
+    await recorder.prepareToRecordAsync();
+    recorder.record();
+
+    currentRecorder = recorder;
     recordingStartTime = Date.now();
     console.log('[Audio] Emergency recording started successfully');
     return true;
   } catch (err) {
     console.error('[Audio] Failed to start recording:', err);
-    currentRecording = null;
+    currentRecorder = null;
     recordingStartTime = null;
     return false;
   }
@@ -75,23 +100,20 @@ export async function startEmergencyRecording(): Promise<boolean> {
  * Stops emergency audio recording and returns the local file URI.
  */
 export async function stopEmergencyRecording(): Promise<string | null> {
-  if (!currentRecording) {
+  if (!currentRecorder) {
     return null;
   }
 
   try {
-    const status = await currentRecording.getStatusAsync();
-    if (status.isRecording || !status.isDoneRecording) {
-      await currentRecording.stopAndUnloadAsync();
-    }
-    const uri = currentRecording.getURI();
+    await currentRecorder.stop();
+    const uri = currentRecorder.uri;
     console.log('[Audio] Emergency recording saved at:', uri);
-    currentRecording = null;
+    currentRecorder = null;
     recordingStartTime = null;
     return uri;
   } catch (err) {
     console.error('[Audio] Failed to stop recording:', err);
-    currentRecording = null;
+    currentRecorder = null;
     recordingStartTime = null;
     return null;
   }
@@ -101,7 +123,7 @@ export async function stopEmergencyRecording(): Promise<string | null> {
  * Returns true if an audio recording is currently active.
  */
 export function isAudioRecording(): boolean {
-  return currentRecording !== null;
+  return currentRecorder !== null;
 }
 
 /**
@@ -111,6 +133,7 @@ export function getRecordingDuration(): number {
   if (!recordingStartTime) return 0;
   return Math.floor((Date.now() - recordingStartTime) / 1000);
 }
+
 
 /**
  * Uploads emergency audio to free cloud hosting (tmpfiles.org)
