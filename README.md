@@ -27,17 +27,25 @@ BehenSafeHai? is a production-grade, 100% free-to-operate Women Safety applicati
    - **Direct Background SMS (Zero Clicks):** In standalone Android builds (`eas build` / `npx expo run:android`), the app uses native `SmsManager` with `android.permission.SEND_SMS` to dispatch SMS to all 3 contacts silently in the background **without opening the messaging app or requiring manual clicks**.
    - **Safe Fallback:** In Expo Go or iOS, automatically uses `expo-sms` / `sms:` URI scheme.
 
-5. **Real-Time Background Tracking**
+5. **Zero-Touch Ambient Audio Capture & Cloud Dispatch**
+   - Automatically begins recording ambient audio hands-free the moment SOS triggers (during the 10s countdown).
+   - Instant GPS SMS is dispatched without any delay at countdown 0.
+   - The captured audio clip is compressed (~32kbps AAC) and uploaded to free temporary cloud storage (`tmpfiles.org`), generating a direct streaming playback URL.
+   - An automated follow-up SMS containing the audio playback link is dispatched to all 3 emergency contacts.
+   - On the Live Tracking screen, users can record additional situational voice notes anytime with 1-tap dispatch.
+
+6. **Real-Time Background Tracking**
    - Background location task registered with `expo-task-manager` and `Location.startLocationUpdatesAsync`.
-   - Persistent foreground service notification on Android: *"🔴 Emergency Tracking Active"*.
+   - Persistent foreground service notification on Android: *"Emergency Tracking Active"*.
    - In-app Live Tracking dashboard displaying coordinates, battery, and a one-tap safety disarm button.
 
 ---
 
-## 📂 Project Directory Layout
+## Project Directory Layout
 
 ```
 ├── __tests__/                   # Jest unit test suites
+│   ├── audioService.test.ts     # Audio recording lifecycle & upload tests
 │   ├── contactStorage.test.ts   # Offline storage tests
 │   ├── locationService.test.ts  # Location & background task tests
 │   └── smsService.test.ts       # SMS payload & phone validation tests
@@ -47,16 +55,18 @@ BehenSafeHai? is a production-grade, 100% free-to-operate Women Safety applicati
 │   │   └── useCountdown.ts      # 10s countdown hook with haptic escalation
 │   ├── screens/
 │   │   ├── DashboardScreen.tsx          # Main dashboard & pulsing SOS trigger
-│   │   ├── SosCountdownScreen.tsx       # 10s circular countdown & auto-dispatch
+│   │   ├── SosCountdownScreen.tsx       # 10s countdown, ambient audio & auto-dispatch
 │   │   ├── EmergencyContactsScreen.tsx  # 3 contacts setup & validation
-│   │   └── TrackingActiveScreen.tsx     # Real-time tracking dashboard & safety stop
+│   │   └── TrackingActiveScreen.tsx     # Live tracking dashboard & voice dispatch
 │   ├── services/
+│   │   ├── audio/
+│   │   │   └── audioService.ts          # Expo-AV recording & free cloud hosting
 │   │   ├── location/
 │   │   │   └── locationService.ts       # GPS, background task & payload builder
 │   │   └── sms/
 │   │       └── smsService.ts            # Zero-cost native carrier SMS dispatch
 │   ├── storage/
-│   │   └── contactStorage.ts    # AsyncStorage persistence layer
+│   │   └── contactStorage.ts    # SecureStore persistence layer
 │   └── types/
 │       └── index.ts             # TypeScript definitions & navigation types
 ├── App.tsx                      # Root navigator & Quick Actions setup
@@ -64,6 +74,7 @@ BehenSafeHai? is a production-grade, 100% free-to-operate Women Safety applicati
 ├── jest.config.js               # Jest configuration
 └── tsconfig.json                # TypeScript configuration
 ```
+
 
 ---
 

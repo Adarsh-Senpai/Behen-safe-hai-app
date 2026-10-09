@@ -88,4 +88,29 @@ describe('SMS & Emergency Dispatch Service', () => {
       expect(['direct_background', 'composer_bulk', 'composer_uri']).toContain(result.method);
     });
   });
+
+  describe('buildAudioAlertMessage', () => {
+    it('generates emergency audio recording SMS containing direct playback URL', () => {
+      const { buildAudioAlertMessage } = require('../src/services/sms/smsService');
+      const testUrl = 'https://tmpfiles.org/dl/12345/emergency.m4a';
+      const msg = buildAudioAlertMessage(testUrl);
+
+      expect(msg).toContain('EMERGENCY AUDIO RECORDING');
+      expect(msg).toContain(testUrl);
+      expect(msg).toContain('BehenSafeHai?');
+    });
+  });
+
+  describe('dispatchAudioAlert', () => {
+    it('dispatches voice note link to contacts', async () => {
+      const { dispatchAudioAlert } = require('../src/services/sms/smsService');
+      const contacts = [
+        { id: '1', name: 'Alice', phone: '9876543210', relationship: 'Parent' },
+      ];
+      const result = await dispatchAudioAlert(contacts, 'https://tmpfiles.org/dl/12345/emergency.m4a');
+      expect(result.success).toBe(true);
+      expect(['direct_background', 'composer_bulk', 'composer_uri']).toContain(result.method);
+    });
+  });
 });
+

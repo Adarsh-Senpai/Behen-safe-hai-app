@@ -9,6 +9,7 @@ import {
   ScrollView,
   Alert,
   Linking,
+  ActivityIndicator,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import * as Haptics from 'expo-haptics';
@@ -18,7 +19,12 @@ import {
   getCurrentLocation,
   stopBackgroundTracking,
 } from '../services/location/locationService';
-import { dispatchSOS } from '../services/sms/smsService';
+import { dispatchSOS, dispatchAudioAlert } from '../services/sms/smsService';
+import {
+  startEmergencyRecording,
+  stopEmergencyRecording,
+  uploadEmergencyAudio,
+} from '../services/audio/audioService';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'TrackingActive'>;
 
@@ -29,11 +35,17 @@ export default function TrackingActiveScreen({ navigation }: Props) {
   const [updating, setUpdating] = useState(false);
   const [sendingUpdate, setSendingUpdate] = useState(false);
 
+  // Audio voice note state
+  const [audioState, setAudioState] = useState<'idle' | 'recording' | 'uploading' | 'sent'>('idle');
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
+
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const radarAnim = useRef(new Animated.Value(0)).current;
+  const voiceRecBlink = useRef(new Animated.Value(1)).current;
 
+  // Pulse animation
   useEffect(() => {
-    // Pulse animation
     const pulse = Animated.loop(
       Animated.sequence([
         Animated.timing(pulseAnim, {
@@ -66,6 +78,24 @@ export default function TrackingActiveScreen({ navigation }: Props) {
     };
   }, [pulseAnim, radarAnim]);
 
+  // Voice recording indicator blinking
+  useEffect(() => {
+    let blink: Animated.CompositeAnimation | null = null;
+    if (audioState === 'recording') {
+      blink = Animated.loop(
+        Animated.sequence([
+          Animated.timing(voiceRecBlink, { toValue: 0.25, duration: 400, useNativeDriver: true }),
+          Animated.timing(voiceRecBlink, { toValue: 1, duration: 400, useNativeDriver: true }),
+        ]),
+      );
+      blink.start();
+    }
+    return () => {
+      if (blink) blink.stop();
+    };
+  }, [audioState, voiceRecBlink]);
+
+  // Periodic location updater
   const fetchLocation = async () => {
     setUpdating(true);
     const loc = await getCurrentLocation();
@@ -79,8 +109,79 @@ export default function TrackingActiveScreen({ navigation }: Props) {
   useEffect(() => {
     fetchLocation();
     const interval = setInterval(fetchLocation, 15000); // refresh every 15s
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+      stopEmergencyRecording().catch(() => {});
+    };
   }, []);
+
+  const handleStartAudioRecording = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
+    const started = await startEmergencyRecording();
+    if (!started) {
+      Alert.alert(
+        'Microphone Permission Required',
+        'Please grant microphone permissions in settings to record voice notes.',
+      );
+      return;
+    }
+
+    setAudioState('recording');
+    setRecordingSeconds(0);
+
+    if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+    recordingTimerRef.current = setInterval(() => {
+      setRecordingSeconds((prev) => {
+        if (prev >= 29) {
+          handleStopAndSendAudio();
+          return 30;
+        }
+        return prev + 1;
+      });
+    }, 1000);
+  };
+
+  const handleStopAndSendAudio = async () => {
+    if (recordingTimerRef.current) {
+      clearInterval(recordingTimerRef.current);
+      recordingTimerRef.current = null;
+    }
+
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
+    setAudioState('uploading');
+
+    try {
+      const audioUri = await stopEmergencyRecording();
+      if (!audioUri) {
+        Alert.alert('Recording Error', 'Unable to retrieve recorded audio file.');
+        setAudioState('idle');
+        return;
+      }
+
+      const audioUrl = await uploadEmergencyAudio(audioUri);
+      if (!audioUrl) {
+        Alert.alert(
+          'Offline Audio Saved',
+          'Voice note saved locally on device. Cellular connection could not reach cloud server.',
+        );
+        setAudioState('idle');
+        return;
+      }
+
+      await dispatchAudioAlert(contacts, audioUrl);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      setAudioState('sent');
+
+      setTimeout(() => {
+        setAudioState('idle');
+        setRecordingSeconds(0);
+      }, 3500);
+    } catch (err: any) {
+      Alert.alert('Audio Alert Error', err?.message || 'Failed to dispatch voice note.');
+      setAudioState('idle');
+    }
+  };
 
   const handleStopTracking = async () => {
     Alert.alert(
@@ -92,6 +193,8 @@ export default function TrackingActiveScreen({ navigation }: Props) {
           text: 'Yes, I am Safe',
           style: 'destructive',
           onPress: async () => {
+            if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+            await stopEmergencyRecording();
             await stopBackgroundTracking();
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
             navigation.reset({
@@ -134,6 +237,7 @@ export default function TrackingActiveScreen({ navigation }: Props) {
       Alert.alert('Error', 'Unable to initiate phone call automatically.');
     });
   };
+
 
   const radarScale = radarAnim.interpolate({
     inputRange: [0, 1],
@@ -234,6 +338,72 @@ export default function TrackingActiveScreen({ navigation }: Props) {
             >
               <Text style={styles.mapLinkText}>View Live Pin in Google Maps &rarr;</Text>
             </TouchableOpacity>
+          )}
+        </View>
+
+        {/* Emergency Voice Note Dispatch Card */}
+        <View style={styles.voiceCard}>
+          <View style={styles.voiceHeader}>
+            <View style={styles.voiceHeaderLeft}>
+              <View style={styles.voiceIndicatorDot} />
+              <Text style={styles.voiceTitle}>EMERGENCY VOICE DISPATCH</Text>
+            </View>
+            {audioState === 'recording' && (
+              <View style={styles.voiceRecBadge}>
+                <Animated.View style={[styles.voiceRecDot, { opacity: voiceRecBlink }]} />
+                <Text style={styles.voiceRecTimer}>
+                  00:{recordingSeconds < 10 ? `0${recordingSeconds}` : recordingSeconds} / 00:30
+                </Text>
+              </View>
+            )}
+          </View>
+
+          {audioState === 'idle' && (
+            <View style={styles.voiceContent}>
+              <Text style={styles.voiceDescription}>
+                Record an ambient situational voice note. The clip is automatically uploaded and dispatched to your 3 contacts via SMS.
+              </Text>
+              <TouchableOpacity
+                style={styles.voiceRecordBtn}
+                onPress={handleStartAudioRecording}
+                activeOpacity={0.85}
+              >
+                <View style={styles.voiceRecordIconDot} />
+                <Text style={styles.voiceRecordBtnText}>Record Emergency Voice Note</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {audioState === 'recording' && (
+            <View style={styles.voiceContent}>
+              <Text style={styles.voiceRecordingPrompt}>
+                Capturing audio clip hands-free. Tap below to finish and send immediately:
+              </Text>
+              <TouchableOpacity
+                style={styles.voiceStopBtn}
+                onPress={handleStopAndSendAudio}
+                activeOpacity={0.85}
+              >
+                <View style={styles.voiceStopSquare} />
+                <Text style={styles.voiceStopBtnText}>Stop & Dispatch to Contacts</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {audioState === 'uploading' && (
+            <View style={styles.voiceStatusBox}>
+              <ActivityIndicator size="small" color="#ff2d55" />
+              <Text style={styles.voiceStatusText}>Uploading voice note & dispatching SMS...</Text>
+            </View>
+          )}
+
+          {audioState === 'sent' && (
+            <View style={styles.voiceStatusBoxSuccess}>
+              <View style={styles.voiceSuccessDot} />
+              <Text style={styles.voiceStatusTextSuccess}>
+                Voice note link dispatched to 3 contacts
+              </Text>
+            </View>
           )}
         </View>
 
@@ -459,6 +629,158 @@ const styles = StyleSheet.create({
   },
   mapLinkText: {
     color: ACCENT,
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+  },
+  voiceCard: {
+    backgroundColor: SURFACE,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: BORDER,
+    padding: 16,
+    marginBottom: 20,
+  },
+  voiceHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  voiceHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  voiceIndicatorDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: ACCENT,
+  },
+  voiceTitle: {
+    color: '#8e8a9f',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 1.2,
+  },
+  voiceRecBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 23, 68, 0.15)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 23, 68, 0.4)',
+    gap: 6,
+  },
+  voiceRecDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: ACCENT_RED,
+  },
+  voiceRecTimer: {
+    color: ACCENT_RED,
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+  },
+  voiceContent: {
+    gap: 12,
+  },
+  voiceDescription: {
+    color: '#8e8a9f',
+    fontSize: 12,
+    lineHeight: 17,
+  },
+  voiceRecordBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255, 45, 85, 0.12)',
+    borderRadius: 12,
+    paddingVertical: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 45, 85, 0.35)',
+    gap: 8,
+  },
+  voiceRecordIconDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: ACCENT,
+  },
+  voiceRecordBtnText: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: 0.4,
+  },
+  voiceRecordingPrompt: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '600',
+    lineHeight: 17,
+  },
+  voiceStopBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: ACCENT_RED,
+    borderRadius: 12,
+    paddingVertical: 14,
+    shadowColor: ACCENT_RED,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 10,
+    elevation: 6,
+    gap: 8,
+  },
+  voiceStopSquare: {
+    width: 8,
+    height: 8,
+    backgroundColor: '#ffffff',
+    borderRadius: 2,
+  },
+  voiceStopBtnText: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: 0.4,
+  },
+  voiceStatusBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    gap: 10,
+  },
+  voiceStatusText: {
+    color: '#60a5fa',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  voiceStatusBoxSuccess: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    borderRadius: 10,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.3)',
+    gap: 8,
+  },
+  voiceSuccessDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#10b981',
+  },
+  voiceStatusTextSuccess: {
+    color: '#10b981',
     fontSize: 12,
     fontWeight: '700',
     letterSpacing: 0.3,

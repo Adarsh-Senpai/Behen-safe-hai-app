@@ -19,7 +19,12 @@ import {
   requestLocationPermissions,
   startBackgroundTracking,
 } from '../services/location/locationService';
-import { dispatchSOS } from '../services/sms/smsService';
+import { dispatchSOS, dispatchAudioAlert } from '../services/sms/smsService';
+import {
+  startEmergencyRecording,
+  stopEmergencyRecording,
+  uploadEmergencyAudio,
+} from '../services/audio/audioService';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SosCountdown'>;
 
@@ -31,10 +36,12 @@ export default function SosCountdownScreen({ navigation }: Props) {
   const [dispatched, setDispatched] = useState(false);
   const [dispatchMethod, setDispatchMethod] = useState<'direct_background' | 'composer_bulk' | 'composer_uri' | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [audioRecording, setAudioRecording] = useState(false);
 
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const pulseOpacity = useRef(new Animated.Value(0.6)).current;
   const successScale = useRef(new Animated.Value(0)).current;
+  const recDotAnim = useRef(new Animated.Value(1)).current;
 
   // Pulsing ring animation
   useEffect(() => {
@@ -53,6 +60,34 @@ export default function SosCountdownScreen({ navigation }: Props) {
     pulse.start();
     return () => pulse.stop();
   }, [pulseAnim, pulseOpacity]);
+
+  // Audio recording indicator blinking
+  useEffect(() => {
+    const recBlink = Animated.loop(
+      Animated.sequence([
+        Animated.timing(recDotAnim, { toValue: 0.2, duration: 550, useNativeDriver: true }),
+        Animated.timing(recDotAnim, { toValue: 1, duration: 550, useNativeDriver: true }),
+      ]),
+    );
+    recBlink.start();
+    return () => recBlink.stop();
+  }, [recDotAnim]);
+
+  // Start hands-free ambient audio recording immediately upon entering countdown
+  useEffect(() => {
+    startEmergencyRecording()
+      .then((started) => {
+        if (started) setAudioRecording(true);
+      })
+      .catch((err) => {
+        console.warn('[Countdown] Auto audio recording failed to init:', err);
+      });
+
+    return () => {
+      // If user navigates away before SOS dispatches, stop and cleanup
+      stopEmergencyRecording().catch(() => {});
+    };
+  }, []);
 
   const triggerDispatch = useCallback(async () => {
     if (dispatching || dispatched) return;
@@ -80,11 +115,29 @@ export default function SosCountdownScreen({ navigation }: Props) {
         timestamp: Date.now(),
       };
 
-      // 3. Dispatch SOS
+      // 3. Dispatch Instant GPS SOS (Critical life-saving priority: never delayed)
       const result = await dispatchSOS(contacts, location);
       setDispatchMethod(result.method);
 
-      // 4. Start background tracking
+      // 4. Background audio processing: stop, upload, and dispatch audio link SMS
+      (async () => {
+        try {
+          const audioUri = await stopEmergencyRecording();
+          setAudioRecording(false);
+          if (audioUri && contacts.length > 0) {
+            console.log('[Countdown] Uploading emergency audio in background...');
+            const audioUrl = await uploadEmergencyAudio(audioUri);
+            if (audioUrl) {
+              console.log('[Countdown] Audio uploaded, dispatching audio alert link...');
+              await dispatchAudioAlert(contacts, audioUrl);
+            }
+          }
+        } catch (audioErr) {
+          console.warn('[Countdown] Background audio dispatch failed:', audioErr);
+        }
+      })();
+
+      // 5. Start background tracking
       await startBackgroundTracking();
 
       setDispatched(true);
@@ -123,6 +176,8 @@ export default function SosCountdownScreen({ navigation }: Props) {
 
   const handleNo = () => {
     cancel();
+    stopEmergencyRecording().catch(() => {});
+    setAudioRecording(false);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     navigation.navigate('Dashboard');
   };
@@ -142,11 +197,20 @@ export default function SosCountdownScreen({ navigation }: Props) {
           <View style={styles.badgePulseDot} />
           <Text style={styles.alertBadgeText}>EMERGENCY PROTOCOL</Text>
         </View>
+
+        {audioRecording && (
+          <View style={styles.audioRecBadge}>
+            <Animated.View style={[styles.audioRecDot, { opacity: recDotAnim }]} />
+            <Text style={styles.audioRecText}>AMBIENT AUDIO REC ACTIVE</Text>
+          </View>
+        )}
+
         <Text style={styles.headerTitle}>Dispatching Live GPS Location</Text>
         <Text style={styles.headerSub}>
           Alerting your 3 designated emergency contacts via SMS
         </Text>
       </View>
+
 
       {/* Timer Ring */}
       <View style={styles.timerSection}>
@@ -315,6 +379,30 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '800',
     letterSpacing: 1.5,
+  },
+  audioRecBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 45, 85, 0.08)',
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 45, 85, 0.3)',
+    marginBottom: 12,
+    gap: 7,
+  },
+  audioRecDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: ACCENT_RED,
+  },
+  audioRecText: {
+    color: ACCENT,
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 1.2,
   },
   headerTitle: {
     color: '#ffffff',

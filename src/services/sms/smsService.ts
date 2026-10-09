@@ -59,16 +59,13 @@ export async function requestSendSmsPermission(): Promise<boolean> {
 }
 
 /**
- * Dispatches emergency SOS alerts.
- * Priority 1: Direct background SMS via carrier without opening the messaging app (Android standalone).
- * Priority 2: Native bulk SMS composer via expo-sms.
- * Priority 3: Native sms: URI scheme fallback.
+ * Internal helper to dispatch any text message to emergency contacts using
+ * direct background SMS -> bulk SMS composer -> individual SMS URI scheme fallback.
  */
-export async function dispatchSOS(
+export async function dispatchTextMessage(
   contacts: EmergencyContact[],
-  location: LocationPayload,
+  message: string,
 ): Promise<DispatchResult> {
-  const message = buildEmergencyMessage(location);
   const failedContacts: string[] = [];
 
   // 1. Direct Background SMS (Android with direct SMS module & permission)
@@ -145,6 +142,36 @@ export async function dispatchSOS(
     failedContacts,
   };
 }
+
+/**
+ * Dispatches emergency SOS alerts with GPS location coordinates.
+ */
+export async function dispatchSOS(
+  contacts: EmergencyContact[],
+  location: LocationPayload,
+): Promise<DispatchResult> {
+  const message = buildEmergencyMessage(location);
+  return dispatchTextMessage(contacts, message);
+}
+
+/**
+ * Builds emergency audio alert SMS message containing direct playback link.
+ */
+export function buildAudioAlertMessage(audioUrl: string): string {
+  return `EMERGENCY AUDIO RECORDING\nBehenSafeHai? ambient voice clip captured during SOS.\nListen immediately: ${audioUrl}`;
+}
+
+/**
+ * Dispatches follow-up emergency audio recording link to contacts.
+ */
+export async function dispatchAudioAlert(
+  contacts: EmergencyContact[],
+  audioUrl: string,
+): Promise<DispatchResult> {
+  const message = buildAudioAlertMessage(audioUrl);
+  return dispatchTextMessage(contacts, message);
+}
+
 
 // ─── Validate phone number ────────────────────────────────────────────────────
 export function validatePhoneNumber(phone: string): boolean {

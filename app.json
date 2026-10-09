@@ -18,7 +18,8 @@
           "location",
           "fetch"
         ],
-        "NSContactsUsageDescription": "BehenSafeHai? needs access to your contacts so you can select your trusted emergency contacts directly from your contact book."
+        "NSContactsUsageDescription": "BehenSafeHai? needs access to your contacts so you can select your trusted emergency contacts directly from your contact book.",
+        "NSMicrophoneUsageDescription": "BehenSafeHai? needs access to your microphone to capture emergency audio evidence during SOS alerts."
       }
     },
     "android": {
@@ -35,6 +36,7 @@
         "FOREGROUND_SERVICE_LOCATION",
         "SEND_SMS",
         "READ_CONTACTS",
+        "RECORD_AUDIO",
         "RECEIVE_BOOT_COMPLETED",
         "VIBRATE",
         "WAKE_LOCK",

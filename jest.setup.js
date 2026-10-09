@@ -130,3 +130,30 @@ jest.mock('react-native', () => ({
   ActivityIndicator: 'ActivityIndicator',
   KeyboardAvoidingView: 'KeyboardAvoidingView',
 }));
+
+jest.mock('expo-av', () => {
+  const mockRecordingInstance = {
+    prepareToRecordAsync: jest.fn().mockResolvedValue(undefined),
+    startAsync: jest.fn().mockResolvedValue(undefined),
+    stopAndUnloadAsync: jest.fn().mockResolvedValue(undefined),
+    getURI: jest.fn().mockReturnValue('file:///test-emergency-audio.m4a'),
+    getStatusAsync: jest.fn().mockResolvedValue({ isRecording: true, durationMillis: 10000 }),
+  };
+
+  return {
+    Audio: {
+      requestPermissionsAsync: jest.fn().mockResolvedValue({ status: 'granted', granted: true }),
+      getPermissionsAsync: jest.fn().mockResolvedValue({ status: 'granted', granted: true }),
+      setAudioModeAsync: jest.fn().mockResolvedValue(undefined),
+      Recording: jest.fn().mockImplementation(() => mockRecordingInstance),
+      RecordingOptionsPresets: {
+        LOW_QUALITY: {
+          android: { extension: '.m4a', outputFormat: 2, audioEncoder: 3, sampleRate: 16000, numberOfChannels: 1, bitRate: 32000 },
+          ios: { extension: '.m4a', audioQuality: 0x00, sampleRate: 16000, numberOfChannels: 1, bitRate: 32000, linearPCMBitDepth: 16, linearPCMIsBigEndian: false, linearPCMIsFloat: false },
+          web: {},
+        },
+        HIGH_QUALITY: {},
+      },
+    },
+  };
+});
