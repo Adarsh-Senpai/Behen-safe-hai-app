@@ -152,8 +152,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
 /**
  * Uploads emergency audio to free cloud hosting and returns the direct playable streaming link.
  * Uses native FileSystem.uploadAsync (bypasses React Native JS FormData to avoid Unsupported FormDataPart implementation).
- * Primary host: tmpfiles.org (with direct /dl/ link conversion)
- * Fallback host: uguu.se (direct audio streaming link)
+ * Primary host: uguu.se (dedicated open-source file host, serves direct audio/x-m4a stream with HTTP 206 Range support)
  */
 export async function uploadEmergencyAudio(localUri: string): Promise<string | null> {
   if (!localUri) return null;
@@ -161,40 +160,10 @@ export async function uploadEmergencyAudio(localUri: string): Promise<string | n
   // Normalize URI for native FileSystem upload
   const uploadUri = localUri.startsWith('file://') ? localUri : `file://${localUri}`;
 
-  // 1. Try Primary Host: tmpfiles.org (validates file field and returns JSON)
+  // 1. Primary Host: uguu.se (serves raw direct audio link, playable directly on Android Chrome and iOS Safari)
   try {
-    console.log('[Audio Upload] Attempting upload to primary host (tmpfiles.org)...');
-    const uploadTask = FileSystem.uploadAsync('https://tmpfiles.org/api/v1/upload', uploadUri, {
-      fieldName: 'file',
-      httpMethod: 'POST',
-      uploadType: FileSystem.FileSystemUploadType.MULTIPART,
-      mimeType: 'audio/m4a',
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36',
-        Accept: 'application/json',
-      },
-    });
-
-    const response = await withTimeout(uploadTask, 9000);
-
-    if (response.status >= 200 && response.status < 300) {
-      const json = JSON.parse(response.body);
-      if (json?.status === 'success' && json?.data?.url) {
-        const rawUrl: string = json.data.url;
-        const directUrl = rawUrl.replace('tmpfiles.org/', 'tmpfiles.org/dl/');
-        console.log('[Audio Upload] Direct playback URL generated (tmpfiles):', directUrl);
-        return directUrl;
-      }
-    }
-    console.warn('[Audio Upload] Primary host returned status:', response.status, response.body);
-  } catch (primaryErr) {
-    console.warn('[Audio Upload] Primary host tmpfiles.org failed, trying fallback uguu.se:', primaryErr);
-  }
-
-  // 2. Try Fallback Host: uguu.se (free temporary file host)
-  try {
-    console.log('[Audio Upload] Attempting upload to fallback host (uguu.se)...');
-    const fallbackTask = FileSystem.uploadAsync('https://uguu.se/upload', uploadUri, {
+    console.log('[Audio Upload] Attempting upload to uguu.se...');
+    const uploadTask = FileSystem.uploadAsync('https://uguu.se/upload', uploadUri, {
       fieldName: 'files[]',
       httpMethod: 'POST',
       uploadType: FileSystem.FileSystemUploadType.MULTIPART,
@@ -204,19 +173,47 @@ export async function uploadEmergencyAudio(localUri: string): Promise<string | n
       },
     });
 
-    const fallbackResp = await withTimeout(fallbackTask, 9000);
+    const response = await withTimeout(uploadTask, 9000);
 
-    if (fallbackResp.status >= 200 && fallbackResp.status < 300) {
-      const json = JSON.parse(fallbackResp.body);
+    if (response.status >= 200 && response.status < 300) {
+      const json = JSON.parse(response.body);
       if (json?.success && json?.files && json.files[0]?.url) {
-        const directUrl = json.files[0].url;
-        console.log('[Audio Upload] Direct playback URL generated (uguu):', directUrl);
+        const directUrl: string = json.files[0].url;
+        console.log('[Audio Upload] Direct playable URL generated (uguu.se):', directUrl);
         return directUrl;
       }
     }
-    console.warn('[Audio Upload] Fallback host returned status:', fallbackResp.status, fallbackResp.body);
-  } catch (fallbackErr) {
-    console.warn('[Audio Upload] Fallback host uguu.se also failed:', fallbackErr);
+    console.warn('[Audio Upload] Primary host uguu.se returned non-200 status:', response.status, response.body);
+  } catch (err) {
+    console.warn('[Audio Upload] Primary host uguu.se failed:', err);
+  }
+
+  // 2. Fallback: Retry uguu.se once in case of temporary network hiccup
+  try {
+    console.log('[Audio Upload] Retrying uguu.se...');
+    const retryTask = FileSystem.uploadAsync('https://uguu.se/upload', uploadUri, {
+      fieldName: 'files[]',
+      httpMethod: 'POST',
+      uploadType: FileSystem.FileSystemUploadType.MULTIPART,
+      mimeType: 'audio/m4a',
+      headers: {
+        Accept: 'application/json',
+      },
+    });
+
+    const retryResp = await withTimeout(retryTask, 9000);
+
+    if (retryResp.status >= 200 && retryResp.status < 300) {
+      const json = JSON.parse(retryResp.body);
+      if (json?.success && json?.files && json.files[0]?.url) {
+        const directUrl: string = json.files[0].url;
+        console.log('[Audio Upload] Direct playable URL generated on retry (uguu.se):', directUrl);
+        return directUrl;
+      }
+    }
+    console.warn('[Audio Upload] Retry returned non-200 status:', retryResp.status, retryResp.body);
+  } catch (retryErr) {
+    console.warn('[Audio Upload] Retry uguu.se failed:', retryErr);
   }
 
   return null;

@@ -47,46 +47,45 @@ describe('Audio Service', () => {
   });
 
   describe('Upload', () => {
-    it('uploads audio via native FileSystem and converts tmpfiles URL to direct stream /dl/ link', async () => {
+    it('uploads audio via native FileSystem directly to uguu.se and returns playable stream URL', async () => {
       (FileSystem.uploadAsync as jest.Mock).mockResolvedValueOnce({
         status: 200,
         body: JSON.stringify({
-          status: 'success',
-          data: {
-            url: 'https://tmpfiles.org/837261/emergency_audio.m4a',
-          },
+          success: true,
+          files: [{ url: 'https://h.uguu.se/tceXtymK.m4a' }],
         }),
       });
 
       const directUrl = await uploadEmergencyAudio('file:///test.m4a');
-      expect(directUrl).toBe('https://tmpfiles.org/dl/837261/emergency_audio.m4a');
+      expect(directUrl).toBe('https://h.uguu.se/tceXtymK.m4a');
       expect(FileSystem.uploadAsync).toHaveBeenCalledWith(
-        'https://tmpfiles.org/api/v1/upload',
+        'https://uguu.se/upload',
         'file:///test.m4a',
         expect.objectContaining({
           httpMethod: 'POST',
+          fieldName: 'files[]',
           uploadType: FileSystem.FileSystemUploadType.MULTIPART,
         }),
       );
     });
 
-    it('falls back to secondary host uguu.se if primary host fails', async () => {
+    it('retries upload if first attempt fails and succeeds on retry', async () => {
       (FileSystem.uploadAsync as jest.Mock)
-        .mockRejectedValueOnce(new Error('tmpfiles connection failed'))
+        .mockRejectedValueOnce(new Error('Transient network glitch'))
         .mockResolvedValueOnce({
           status: 200,
           body: JSON.stringify({
             success: true,
-            files: [{ url: 'https://a.uguu.se/test.m4a' }],
+            files: [{ url: 'https://d.uguu.se/retry_success.m4a' }],
           }),
         });
 
       const directUrl = await uploadEmergencyAudio('file:///test.m4a');
-      expect(directUrl).toBe('https://a.uguu.se/test.m4a');
+      expect(directUrl).toBe('https://d.uguu.se/retry_success.m4a');
       expect(FileSystem.uploadAsync).toHaveBeenCalledTimes(2);
     });
 
-    it('returns null gracefully on upload error or network failure across all hosts', async () => {
+    it('returns null gracefully on upload error or network failure across all attempts', async () => {
       (FileSystem.uploadAsync as jest.Mock).mockRejectedValue(new Error('Network offline'));
       const directUrl = await uploadEmergencyAudio('file:///test.m4a');
       expect(directUrl).toBeNull();
