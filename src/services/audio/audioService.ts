@@ -136,53 +136,87 @@ export function getRecordingDuration(): number {
 
 
 /**
- * Uploads emergency audio to free cloud hosting (tmpfiles.org)
- * and returns the direct playable streaming link.
- * 
- * Free endpoint: https://tmpfiles.org/api/v1/upload
- * Converts: https://tmpfiles.org/12345/audio.m4a -> https://tmpfiles.org/dl/12345/audio.m4a
+ * Uploads emergency audio to free cloud hosting and returns the direct playable streaming link.
+ * Primary host: tmpfiles.org (with direct /dl/ link conversion)
+ * Fallback host: uguu.se (direct audio streaming link)
  */
 export async function uploadEmergencyAudio(localUri: string): Promise<string | null> {
   if (!localUri) return null;
 
+  // Normalize URI for React Native Android / iOS FormData
+  const uploadUri = localUri.startsWith('file://') ? localUri : `file://${localUri}`;
+  const filename = uploadUri.split('/').pop() || `emergency_${Date.now()}.m4a`;
+
   let timeoutId: NodeJS.Timeout | null = null;
   try {
     const controller = new AbortController();
-    timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
+    timeoutId = setTimeout(() => controller.abort(), 8000); // 8s timeout
 
-    const filename = localUri.split('/').pop() || `emergency_${Date.now()}.m4a`;
+    // 1. Try Primary Host: tmpfiles.org
+    try {
+      const formData = new FormData();
+      formData.append('file', {
+        uri: uploadUri,
+        name: filename,
+        type: 'audio/m4a',
+      } as any);
 
-    const formData = new FormData();
-    formData.append('file', {
-      uri: localUri,
-      name: filename,
-      type: 'audio/m4a',
-    } as any);
+      const response = await fetch('https://tmpfiles.org/api/v1/upload', {
+        method: 'POST',
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36',
+          Accept: 'application/json',
+        },
+        body: formData,
+        signal: controller.signal,
+      });
 
-    const response = await fetch('https://tmpfiles.org/api/v1/upload', {
-      method: 'POST',
-      body: formData,
-      signal: controller.signal,
-    });
-
-    if (!response.ok) {
-      console.warn(`[Audio Upload] Server responded with status: ${response.status}`);
-      return null;
+      if (response.ok) {
+        const json = await response.json();
+        if (json?.status === 'success' && json?.data?.url) {
+          const rawUrl: string = json.data.url;
+          const directUrl = rawUrl.replace('tmpfiles.org/', 'tmpfiles.org/dl/');
+          console.log('[Audio Upload] Direct playback URL generated (tmpfiles):', directUrl);
+          return directUrl;
+        }
+      }
+    } catch (primaryErr) {
+      console.warn('[Audio Upload] Primary host tmpfiles.org failed, trying fallback uguu.se:', primaryErr);
     }
 
-    const json = await response.json();
-    if (json?.status === 'success' && json?.data?.url) {
-      const rawUrl: string = json.data.url;
-      // Convert web view URL to direct streaming/download URL:
-      // https://tmpfiles.org/12345/file.m4a -> https://tmpfiles.org/dl/12345/file.m4a
-      const directUrl = rawUrl.replace('tmpfiles.org/', 'tmpfiles.org/dl/');
-      console.log('[Audio Upload] Direct playback URL generated:', directUrl);
-      return directUrl;
+    // 2. Try Fallback Host: uguu.se
+    try {
+      const fallbackFormData = new FormData();
+      fallbackFormData.append('files[]', {
+        uri: uploadUri,
+        name: filename,
+        type: 'audio/m4a',
+      } as any);
+
+      const fallbackResp = await fetch('https://uguu.se/upload', {
+        method: 'POST',
+        headers: {
+          Accept: 'application/json',
+        },
+        body: fallbackFormData,
+        signal: controller.signal,
+      });
+
+      if (fallbackResp.ok) {
+        const json = await fallbackResp.json();
+        if (json?.success && json?.files && json.files[0]?.url) {
+          const directUrl = json.files[0].url;
+          console.log('[Audio Upload] Direct playback URL generated (uguu):', directUrl);
+          return directUrl;
+        }
+      }
+    } catch (fallbackErr) {
+      console.warn('[Audio Upload] Fallback host uguu.se also failed:', fallbackErr);
     }
 
     return null;
   } catch (err) {
-    console.warn('[Audio Upload] Upload failed or timed out:', err);
+    console.warn('[Audio Upload] Upload process error:', err);
     return null;
   } finally {
     if (timeoutId) {
@@ -190,4 +224,5 @@ export async function uploadEmergencyAudio(localUri: string): Promise<string | n
     }
   }
 }
+
 

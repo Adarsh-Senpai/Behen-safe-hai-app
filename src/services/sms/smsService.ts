@@ -144,33 +144,45 @@ export async function dispatchTextMessage(
 }
 
 /**
- * Dispatches emergency SOS alerts with GPS location coordinates.
+ * Dispatches emergency SOS alerts with GPS location coordinates and audio link.
  */
 export async function dispatchSOS(
   contacts: EmergencyContact[],
   location: LocationPayload,
+  audioUrl?: string | null,
 ): Promise<DispatchResult> {
-  const message = buildEmergencyMessage(location);
+  const message = buildEmergencyMessage(location, audioUrl);
   return dispatchTextMessage(contacts, message);
 }
 
 /**
- * Builds emergency audio alert SMS message containing direct playback link.
+ * Builds emergency audio alert SMS message containing direct playback link and coordinates.
  */
-export function buildAudioAlertMessage(audioUrl: string): string {
-  return `EMERGENCY AUDIO RECORDING\nBehenSafeHai? ambient voice clip captured during SOS.\nListen immediately: ${audioUrl}`;
+export function buildAudioAlertMessage(
+  audioUrl: string,
+  location?: LocationPayload | null,
+): string {
+  let msg = `EMERGENCY AUDIO RECORDING\nBehenSafeHai? voice clip captured during SOS.\nListen immediately: ${audioUrl}`;
+  if (location) {
+    msg += `\nLive Location: https://maps.google.com/?q=${location.latitude},${location.longitude}`;
+  }
+  msg += `\nSent via BehenSafeHai? Safety App`;
+  return msg;
 }
 
+
 /**
- * Dispatches follow-up emergency audio recording link to contacts.
+ * Dispatches emergency audio recording alert to contacts.
  */
 export async function dispatchAudioAlert(
   contacts: EmergencyContact[],
   audioUrl: string,
+  location?: LocationPayload | null,
 ): Promise<DispatchResult> {
-  const message = buildAudioAlertMessage(audioUrl);
+  const message = buildAudioAlertMessage(audioUrl, location);
   return dispatchTextMessage(contacts, message);
 }
+
 
 
 // ─── Validate phone number ────────────────────────────────────────────────────

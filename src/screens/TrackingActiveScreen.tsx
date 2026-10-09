@@ -169,7 +169,7 @@ export default function TrackingActiveScreen({ navigation }: Props) {
         return;
       }
 
-      await dispatchAudioAlert(contacts, audioUrl);
+      await dispatchAudioAlert(contacts, audioUrl, currentLoc);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
       setAudioState('sent');
 

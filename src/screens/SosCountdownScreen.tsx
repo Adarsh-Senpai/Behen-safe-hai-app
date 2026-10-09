@@ -107,38 +107,51 @@ export default function SosCountdownScreen({ navigation }: Props) {
         );
       }
 
-      // 2. Fetch location
-      const location = (await getCurrentLocation()) || {
-        latitude: 0,
-        longitude: 0,
-        accuracy: null,
-        timestamp: Date.now(),
-      };
+      // 2. Concurrently fetch location AND stop + upload the 10-second emergency audio clip
+      // so the audio recording link is directly embedded inside the SMS sent to contacts
+      const locationPromise = getCurrentLocation().then(
+        (loc) =>
+          loc || {
+            latitude: 0,
+            longitude: 0,
+            accuracy: null,
+            timestamp: Date.now(),
+          },
+      );
 
-      // 3. Dispatch Instant GPS SOS (Critical life-saving priority: never delayed)
-      const result = await dispatchSOS(contacts, location);
-      setDispatchMethod(result.method);
-
-      // 4. Background audio processing: stop, upload, and dispatch audio link SMS
-      (async () => {
+      const audioUploadPromise = (async () => {
         try {
           const audioUri = await stopEmergencyRecording();
           setAudioRecording(false);
-          if (audioUri && contacts.length > 0) {
-            console.log('[Countdown] Uploading emergency audio in background...');
-            const audioUrl = await uploadEmergencyAudio(audioUri);
-            if (audioUrl) {
-              console.log('[Countdown] Audio uploaded, dispatching audio alert link...');
-              await dispatchAudioAlert(contacts, audioUrl);
-            }
+          if (audioUri) {
+            console.log('[Countdown] Uploading emergency audio recording...');
+            return await uploadEmergencyAudio(audioUri);
           }
-        } catch (audioErr) {
-          console.warn('[Countdown] Background audio dispatch failed:', audioErr);
+          return null;
+        } catch (e) {
+          console.warn('[Countdown] Audio capture/upload failed:', e);
+          return null;
         }
       })();
 
-      // 5. Start background tracking
+      // 3.5-second timeout safety cap so emergency SMS is never held up if cellular data is offline
+      const [location, audioUrl] = await Promise.all([
+        locationPromise,
+        Promise.race([
+          audioUploadPromise,
+          new Promise<null>((resolve) => setTimeout(() => resolve(null), 3500)),
+        ]),
+      ]);
+
+      console.log('[Countdown] Dispatching unified SOS SMS with embedded audioUrl:', audioUrl);
+
+      // 3. Dispatch unified SOS SMS containing GPS location AND audio link together
+      const result = await dispatchSOS(contacts, location, audioUrl);
+      setDispatchMethod(result.method);
+
+      // 4. Start background tracking
       await startBackgroundTracking();
+
 
       setDispatched(true);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});

@@ -60,19 +60,27 @@ export async function getCurrentLocation(): Promise<LocationPayload | null> {
 }
 
 // ─── Build SMS Message ────────────────────────────────────────────────────────
-export function buildEmergencyMessage(payload: LocationPayload): string {
+export function buildEmergencyMessage(
+  payload: LocationPayload,
+  audioUrl?: string | null,
+): string {
   const mapsUrl = `https://maps.google.com/?q=${payload.latitude},${payload.longitude}`;
   const accuracyStr = payload.accuracy ? `${Math.round(payload.accuracy)}m` : 'unknown';
   const battStr =
     payload.batteryLevel !== undefined ? ` | Battery: ${payload.batteryLevel}%` : '';
+  const audioStr = audioUrl
+    ? `\n\nEmergency Audio Recording:\n${audioUrl}`
+    : '';
+
   return (
     `EMERGENCY SOS: I need help immediately!\n\n` +
     `Live location:\n${mapsUrl}\n\n` +
-    `GPS Accuracy: ${accuracyStr}${battStr}\n\n` +
+    `GPS Accuracy: ${accuracyStr}${battStr}${audioStr}\n\n` +
     `Please contact emergency services and reach this location immediately.\n` +
     `Sent via BehenSafeHai? Safety App`
   );
 }
+
 
 // ─── Background Task Definition ───────────────────────────────────────────────
 try {

@@ -61,12 +61,29 @@ describe('SMS & Emergency Dispatch Service', () => {
       };
 
       const message = buildEmergencyMessage(payload);
-
       expect(message).toContain('https://maps.google.com/?q=37.7749,-122.4194');
       expect(message).toContain('Accuracy: unknown');
       expect(message).not.toContain('Battery:');
     });
+
+    it('embeds audioUrl directly in the SOS message when provided', () => {
+      const payload: LocationPayload = {
+        latitude: 28.6139,
+        longitude: 77.2090,
+        accuracy: 10,
+        timestamp: 1700000000000,
+        batteryLevel: 90,
+      };
+      const audioUrl = 'https://tmpfiles.org/dl/12345/emergency.m4a';
+      const message = buildEmergencyMessage(payload, audioUrl);
+
+      expect(message).toContain('EMERGENCY SOS');
+      expect(message).toContain('Emergency Audio Recording:');
+      expect(message).toContain(audioUrl);
+      expect(message).toContain('https://maps.google.com/?q=28.6139,77.209');
+    });
   });
+
 
   describe('dispatchSOS', () => {
     it('dispatches to contacts and returns dispatch method and success status', async () => {
